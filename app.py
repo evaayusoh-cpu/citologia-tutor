@@ -273,8 +273,11 @@ def call_tutor(client, history, state):
         else:
             messages.append({"role": "assistant", "content": m["content"]})
     
+    # If no messages yet (opening turn), send an initial prompt
+    if not messages:
+        messages = [{"role": "user", "content": state_block + "Comienza la sesión con el mensaje de apertura."}]
     # Prepend state to last user message
-    if messages and messages[-1]["role"] == "user":
+    elif messages[-1]["role"] == "user":
         messages[-1]["content"] = state_block + messages[-1]["content"]
     
     response = client.messages.create(
