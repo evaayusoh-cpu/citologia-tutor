@@ -28,24 +28,34 @@ El orden de las muestras proyectadas en clase es:
 Definición de cada ítem:
 
 muestra_A_tramo_correcto: true si el estudiante ha expresado que la muestra A corresponde al yeyuno o al intestino delgado, con cualquier formulación.
+Ejemplos que activan este ítem: "es intestino delgado", "creo que es el yeyuno", "esto viene del intestino delgado", "parece yeyuno", "intestino delgado, ¿no?".
 
 muestra_A_argumento_suficiente: true si el estudiante ha mencionado proyecciones, dedos, salientes, vellosidades o cualquier estructura que sobresalga hacia la luz en la superficie mucosa, Y ha expresado aunque sea vagamente que su ausencia indicaría otro tramo distinto. No se exige que nombre el ribete en cepillo ni las células caliciformes.
+Ejemplos que activan este ítem: "veo como dedos que salen hacia arriba", "tiene proyecciones largas y finas", "hay salientes en la superficie", "se ven como dedos largos", "tiene vellosidades", "hay como dedos o proyecciones y si no estuvieran sería otro tramo", "veo vellosidades y sin ellas no sería intestino delgado". Basta con que describa las proyecciones/vellosidades con cualquier formulación informal; la segunda parte (ausencia = otro tramo) puede ser implícita si el contexto lo deja claro.
 
 muestra_A_funcion: true si el estudiante ha expresado, con cualquier formulación, que las vellosidades o proyecciones sirven para absorber nutrientes, aumentar la superficie de absorción, o cualquier idea equivalente. No se exige terminología técnica.
+Ejemplos que activan este ítem: "para absorber mejor los nutrientes", "aumentan la superficie para absorber", "sirven para absorber", "para que entre más superficie en contacto con lo que pasa", "para aprovechar mejor la comida".
 
 muestra_B_tramo_correcto: true si el estudiante ha expresado que la muestra B corresponde al esófago, con cualquier formulación.
+Ejemplos que activan este ítem: "es el esófago", "creo que es esófago", "esto es del esófago", "parece esófago".
 
 muestra_B_argumento_suficiente: true si el estudiante ha mencionado que el epitelio tiene varias capas, que las células son planas o aplanadas, o que no hay estructuras glandulares en la superficie — con cualquier formulación, incluyendo lenguaje informal como "células aplastadas", "muchas capas", "superficie sin huecos". No se exige terminología técnica.
+Ejemplos que activan este ítem: "veo muchas capas de células", "las células parecen aplastadas o planas", "hay varias capas apiladas", "no veo vellosidades ni huecos en la superficie", "el epitelio tiene capas", "células aplanadas en varias filas".
 
 muestra_B_funcion: true si el estudiante ha expresado, con cualquier formulación, que el epitelio estratificado sirve para proteger frente al roce, al desgaste mecánico, o al paso del bolo alimenticio. No se exige terminología técnica.
+Ejemplos que activan este ítem: "para proteger del roce", "porque pasa el bolo y lo desgasta", "para aguantar el paso de la comida", "protección mecánica", "para que no se dañe cuando traga".
 
 muestra_C_tramo_correcto: true si el estudiante ha expresado que la muestra C corresponde al colon o al intestino grueso, con cualquier formulación.
+Ejemplos que activan este ítem: "es el colon", "intestino grueso", "creo que es colon", "esto viene del intestino grueso".
 
 muestra_C_argumento_suficiente: true si el estudiante ha combinado la ausencia de proyecciones o vellosidades en la superficie con alguna referencia a que hay muchas células con moco, células transparentes, células vacías o células en copa en las criptas. Basta con que mencione los dos rasgos juntos aunque sea con lenguaje muy informal. No basta con mencionar uno solo de forma aislada.
+Ejemplos que activan este ítem: "no tiene vellosidades y hay muchas células con vacíos o transparentes", "la superficie es plana y veo células como en copa", "sin proyecciones y con muchas células de moco", "no hay dedos como en la A y hay células que parecen vacías o con burbuja".
 
 muestra_D_tramo_correcto: true si el estudiante ha expresado que la muestra D corresponde al estómago, con cualquier formulación.
+Ejemplos que activan este ítem: "es el estómago", "creo que es estómago", "esto viene del estómago", "parece estómago".
 
 muestra_D_argumento_suficiente: true si el estudiante ha mencionado alguna invaginación o hueco en la superficie mucosa (fosetas, pozos, agujeros, hendiduras, aberturas) Y ha descrito alguna célula de las glándulas con al menos un rasgo visual, aunque sea impreciso (grandes y rosadas, pequeñas y oscuras, con puntitos, con granitos). No se exige nombre técnico como "células oxínticas" o "células principales".
+Ejemplos que activan este ítem: "veo huecos en la superficie y dentro hay células grandes rosadas y otras pequeñas oscuras", "hay como pozos y dentro las células son de dos tipos distintos", "la superficie tiene aberturas y veo células con granitos", "hay hendiduras y células de diferentes tamaños y colores".
 
 Responde ÚNICAMENTE con el JSON, sin texto adicional, sin explicaciones, sin formato markdown:
 {
