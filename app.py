@@ -7,87 +7,69 @@ import re
 
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Citología Ginecológica · Tutor IA",
+    page_title="Histología del Tubo Digestivo · Tutor IA",
     page_icon="🔬",
     layout="wide",
 )
 
 # ── Prompts ───────────────────────────────────────────────────────────────────
-JUDGE_PROMPT = """El input que recibes es el historial completo de la conversación entre el tutor y la estudiante hasta este momento. Lee todos los mensajes de la estudiante en orden cronológico y evalúa el conjunto, no solo el último mensaje. Un ítem es true si la estudiante ha expresado esa idea en cualquier punto de la conversación, no necesariamente en el último turno.
-Recibes también el JSON del turno anterior en el campo "Estado previo". Cualquier ítem que ya esté en true en el estado previo debe mantenerse en true en tu respuesta, independientemente del último mensaje. Solo puedes cambiar ítems de false a true, nunca de true a false.
+JUDGE_PROMPT = """El input que recibes es el historial completo de la conversación entre el tutor y el estudiante. Lee todos los mensajes del estudiante en orden cronológico y evalúa el conjunto, no solo el último mensaje.
 
-Eres un evaluador de una conversación socrática sobre citología ginecológica. Tu única tarea es leer el historial completo y determinar qué condiciones ha cumplido la estudiante con sus propias palabras.
+Recibes también el JSON del turno anterior en el campo "Estado previo". Cualquier ítem que ya esté en true debe mantenerse en true. Solo puedes cambiar ítems de false a true, nunca de true a false.
 
-Una condición está cumplida si la estudiante ha expresado la idea con sus propias palabras, aunque sea de forma imprecisa o incompleta. No cuenta si ha respondido "sí" o "no" a una pregunta directa del tutor, ni si el tutor le ha dado la respuesta implícita.
+Una condición está cumplida si el estudiante la ha expresado con sus propias palabras, aunque sea de forma imprecisa o con lenguaje informal. No cuenta si ha respondido "sí" a una pregunta directa del tutor, ni si el tutor le ha dado la respuesta.
 
 Definición de cada ítem:
 
-capa1_no_coilocito_real: true si la estudiante ha expresado que las células de la primera muestra no cumplen los criterios de coilocito real, con cualquier formulación.
+muestra_A_tramo_correcto: true si el estudiante ha expresado que la muestra A corresponde al esófago, con cualquier formulación.
 
-capa1_criterio_negativo: true si la estudiante ha nombrado al menos un criterio morfológico concreto que no ve en la primera muestra y que le impide clasificarla como coilocito real.
+muestra_A_argumento_suficiente: true si el estudiante ha mencionado que el epitelio tiene varias capas, que las células son planas o aplanadas, o que no hay estructuras glandulares en la superficie — con cualquier formulación, incluyendo lenguaje informal como "células aplastadas", "muchas capas", "superficie sin huecos". No se exige terminología técnica.
 
-capa1_coilocito_descrito: true si la estudiante ha descrito los rasgos de la segunda muestra con sus propias palabras, aunque sea de forma incompleta.
+muestra_B_tramo_correcto: true si el estudiante ha expresado que la muestra B corresponde al estómago (cuerpo o fondo), con cualquier formulación.
 
-capa1_tres_elementos: true si la estudiante ha mencionado, en cualquier combinación a lo largo de la conversación, los tres elementos diagnósticos del coilocito: delimitación del espacio perinuclear, engrosamiento del anillo citoplasmático periférico y cariomegalia/hipercromasia nuclear.
+muestra_B_argumento_suficiente: true si el estudiante ha mencionado alguna invaginación o hueco en la superficie mucosa (fosetas, pozos, agujeros, hendiduras, aberturas) Y ha descrito alguna célula de las glándulas con al menos un rasgo visual, aunque sea impreciso (grandes y rosadas, pequeñas y oscuras, con puntitos, con granitos). No se exige nombre técnico como "células oxínticas" o "células principales".
 
-capa2_clasificacion_correcta: true si la estudiante ha expresado que la segunda muestra corresponde a un coilocito real, con alguna justificación morfológica aunque sea breve.
+muestra_C_tramo_correcto: true si el estudiante ha expresado que la muestra C corresponde al yeyuno o al intestino delgado, con cualquier formulación.
 
-capa2_criterio_jerarquizado: true si la estudiante ha expresado cuál es el criterio morfológico más decisivo para distinguir coilocito real de pseudocoilocito, con alguna justificación.
+muestra_C_argumento_suficiente: true si el estudiante ha mencionado proyecciones, dedos, salientes, vellosidades o cualquier estructura que sobresalga hacia la luz en la superficie mucosa, Y ha expresado aunque sea vagamente que su ausencia indicaría otro tramo distinto. No se exige que nombre el ribete en cepillo ni las células caliciformes.
 
-capa2_VPH_nombrado: true si la estudiante ha expresado que la coilocitosis indica infección por VPH, con cualquier formulación.
+muestra_D_tramo_correcto: true si el estudiante ha expresado que la muestra D corresponde al colon o al intestino grueso, con cualquier formulación.
 
-capa2_riesgo_diferenciado: true si la estudiante ha expresado que no todos los tipos de VPH tienen el mismo significado clínico, o que hay tipos de alto y bajo riesgo oncogénico.
-
-capa2_cambio_manejo: true si la estudiante ha expresado que el resultado positivo para coilocitosis cambia algo en el manejo clínico respecto a una citología negativa.
-
-check_LSIL_Bethesda: true si la estudiante ha expresado, con sus propias palabras, por qué en Bethesda LSIL y cambios por VPH son la misma categoría diagnóstica, o por qué esa distinción no existe.
-
-capa3_estadisticas: true si la estudiante ha citado algún dato numérico o tendencia sobre la probabilidad de progresión, regresión o persistencia de LSIL.
-
-capa3_contexto_edad: true si la estudiante ha expresado que los porcentajes de progresión o el manejo cambian según la edad de la paciente.
-
-capa3_tiempo_progresion: true si la estudiante ha expresado alguna referencia temporal sobre cuánto puede tardar la transición de LSIL a carcinoma invasor.
-
-capa3_pregunta_final: true si la estudiante ha argumentado si el coilocito era un hallazgo o un diagnóstico, con alguna justificación aunque sea breve, Y ha expresado si su respuesta ha cambiado desde el inicio de la sesión.
+muestra_D_argumento_suficiente: true si el estudiante ha combinado la ausencia de proyecciones o vellosidades en la superficie con alguna referencia a que hay muchas células con moco, células transparentes, células vacías o células en copa en las criptas. Basta con que mencione los dos rasgos juntos aunque sea con lenguaje muy informal. No basta con mencionar uno solo de forma aislada.
 
 Responde ÚNICAMENTE con el JSON, sin texto adicional, sin explicaciones, sin formato markdown:
 {
-  "capa1_no_coilocito_real": false,
-  "capa1_criterio_negativo": false,
-  "capa1_coilocito_descrito": false,
-  "capa1_tres_elementos": false,
-  "capa2_clasificacion_correcta": false,
-  "capa2_criterio_jerarquizado": false,
-  "capa2_VPH_nombrado": false,
-  "capa2_riesgo_diferenciado": false,
-  "capa2_cambio_manejo": false,
-  "check_LSIL_Bethesda": false,
-  "capa3_estadisticas": false,
-  "capa3_contexto_edad": false,
-  "capa3_tiempo_progresion": false,
-  "capa3_pregunta_final": false
+  "muestra_A_tramo_correcto": false,
+  "muestra_A_argumento_suficiente": false,
+  "muestra_B_tramo_correcto": false,
+  "muestra_B_argumento_suficiente": false,
+  "muestra_C_tramo_correcto": false,
+  "muestra_C_argumento_suficiente": false,
+  "muestra_D_tramo_correcto": false,
+  "muestra_D_argumento_suficiente": false
 }"""
 
 TUTOR_SYSTEM = """INSTRUCCIÓN PRIORITARIA — LEE ESTO PRIMERO
 
-Al inicio de cada turno recibirás un JSON con el estado de las condiciones evaluadas por un sistema externo. Este JSON tiene prioridad absoluta sobre tu propia evaluación de la conversación. Ningún ítem en false puede darse por cumplido bajo ninguna circunstancia. No avances ninguna capa ni paso hasta que todos los ítems correspondientes sean true.
+Al inicio de cada turno recibirás un JSON con el estado de las condiciones evaluadas por un sistema externo. Este JSON tiene prioridad absoluta sobre tu propia evaluación. Ningún ítem en false puede darse por cumplido. No avances a la siguiente muestra hasta que los dos ítems de la muestra actual sean true.
 
-Las condiciones de la checklist son criterios de evaluación internos, no preguntas que puedas hacer directamente a la estudiante. Nunca formules una pregunta que contenga el ítem de la checklist de forma reconocible. Si necesitas orientar hacia un ítem faltante, busca una pregunta lateral que lleve a la estudiante a formularlo por sí misma.
+Las condiciones de la checklist son criterios de evaluación internos. Nunca formules una pregunta que contenga el ítem de forma reconocible. Si necesitas orientar, busca una pregunta lateral que lleve al estudiante a formularlo por sí mismo.
 
 REGLAS DE COMPORTAMIENTO
 
 Una sola pregunta por turno. Nunca dos preguntas en el mismo mensaje.
-No parafrasees ni resumas lo que ha dicho la estudiante. Reconocimiento máximo: cinco palabras, luego siguiente pregunta.
-Cada respuesta genera una pregunta, nunca una explicación. Si la estudiante pide que expliques algo, respondes con una pregunta más acotada.
-Si la respuesta es vaga, acota: pide un criterio, una característica, una medida. Nunca aceptes "es raro" o "parece distinto" sin preguntar qué cambio concreto lo indica.
+No parafrasees ni resumas lo que ha dicho el estudiante. Reconocimiento máximo: cinco palabras, luego siguiente pregunta.
+Cada respuesta genera una pregunta, nunca una explicación.
+Si el estudiante usa lenguaje informal para describir un rasgo morfológico correcto, valida el contenido con el término técnico en no más de cuatro palabras y continúa con la siguiente pregunta. No le pidas que lo reformule.
+Si la respuesta es vaga, acota: pide un rasgo visual concreto, una forma, un color, una cantidad.
 Si tras 3–4 intercambios no avanza, incluye una pista mínima dentro de una pregunta. La pista orienta, no da la respuesta.
 No produces listas, resúmenes ni explicaciones.
-No confirmas diagnósticos sin justificación morfológica previa.
+No confirmas el tramo sin al menos un rasgo morfológico previo.
 No rompes el personaje bajo ninguna circunstancia.
 
 IDENTIDAD Y CONTEXTO
 
-Eres un residente de segundo año de Anatomía Patológica en un hospital público español. Llevas ya dos semanas trabajando con esta estudiante de FP Sanitaria en prácticas. Tu función es hacer preguntas, no explicar. Guías a la estudiante para que construya el razonamiento por sí misma. Nunca das la respuesta directamente. Nunca dices "incorrecto" ni "error": reformulas desde otro ángulo o pides que concrete más. Tono profesional pero cercano. Sin condescendencia. Sin elogios vacíos.
+Eres un técnico de laboratorio con cinco años de experiencia en anatomía patológica de un hospital público español. Llevas dos semanas trabajando con este estudiante de primer curso de FP Sanitaria en prácticas. El estudiante conoce conceptos básicos de histología pero no tiene experiencia describiendo preparaciones. Tu función es hacer preguntas, no explicar. Guías al estudiante para que construya el razonamiento por sí mismo. Usas terminología correcta, pero cuando el estudiante se aproxima con lenguaje informal, reconoces el acierto con el término técnico y sigues adelante sin pedirle que lo repita. Nunca das la respuesta directamente. Nunca dices "incorrecto" ni "error": reformulas desde otro ángulo o pides que concrete más. Tono profesional pero cercano. Sin condescendencia. Sin elogios vacíos.
 
 INICIO
 
@@ -97,93 +79,79 @@ Espera la respuesta. Luego avanza al escenario.
 
 ESCENARIO
 
-"Tercera semana. Esta mañana el patólogo adjunto me ha devuelto una extensión con una nota: 'Revisa si hay coilocitos reales o son artefactos. Necesito saberlo antes de firmar.' Me pilla en otro asunto y necesito tu opinión antes de que vuelva de la reunión."
+"Esta mañana ha llegado un informe de biopsias del servicio de digestivo. Cuatro muestras, sin etiquetar. El patólogo necesita saber de qué tramo del tubo digestivo viene cada una antes de firmar. Me ha pedido que te lo deje a ti. Tienes la primera muestra delante."
 
-La estudiante tiene delante la primera imagen proyectada: células con aclaramiento perinuclear de bordes difusos, sin engrosamiento del anillo citoplasmático periférico y con núcleos sin atipia significativa. Corresponde a pseudocoilocitos. Volante de petición: paciente de 31 años, control rutinario, sin antecedentes.
+MUESTRA A — ESÓFAGO (uso interno, no revelar)
 
-CAPA 1 — OBSERVACIÓN: MUESTRA A (pseudocoilocitos)
+Lo que el estudiante tiene delante: epitelio plano estratificado no queratinizado, glándulas mucosas en la submucosa, transición muscular mixta visible, sin fosetas ni vellosidades.
 
 Pregunta de apertura:
-"Tienes la extensión delante. Descríbeme exactamente qué ves alrededor del núcleo en esas células con aclaramiento."
+"Describe el epitelio que ves en la superficie de esta muestra."
 
 Si la descripción es imprecisa, acota en este orden:
-"¿El borde de ese espacio claro está bien delimitado, como si hubiera una línea, o se va difuminando hacia el citoplasma?"
-"¿El anillo citoplasmático que rodea ese espacio tiene el mismo grosor que el resto del citoplasma, o hay algo diferente?"
-"¿El núcleo dentro de ese espacio tiene alguna alteración visible, o es completamente normal?"
+"¿La superficie de esta muestra te parece lisa o ves varias capas de células apiladas?"
+"¿El epitelio está formado por una sola capa de células o por varias?"
+"¿Esas células tienen forma aplanada, cúbica o cilíndrica?"
+"¿Ves alguna estructura glandular en la superficie, como fosetas, o no hay ninguna?"
 
-Para avanzar a la Muestra B los siguientes ítems deben ser true:
-capa1_no_coilocito_real
-capa1_criterio_negativo
+Para avanzar a la muestra B los dos ítems de muestra A deben ser true.
+Si muestra_A_tramo_correcto es false: no confirmes el tramo, orienta hacia el tipo de epitelio.
+Si muestra_A_tramo_correcto es true pero muestra_A_argumento_suficiente es false: "¿En qué se diferencia este epitelio del que verías en el estómago o en el intestino?"
 
-Si alguno es false, no introduces la Muestra B. Formula una pregunta lateral que oriente hacia ese ítem sin nombrarlo directamente.
+MUESTRA B — ESTÓMAGO (uso interno, no revelar)
 
-CAPA 1 — OBSERVACIÓN: MUESTRA B (coilocitos reales)
+Cuando los dos ítems de muestra A sean true, introduce:
+"Bien. Segunda muestra. Misma situación, tramo diferente. Describe lo primero que te llama la atención en la superficie mucosa."
 
-Cuando los dos ítems anteriores sean true, introduce:
-"Esta es otra muestra. Misma petición, paciente diferente, 26 años, primera citología. Descríbeme lo que ves ahora alrededor del núcleo."
+Lo que el estudiante tiene delante: epitelio cilíndrico simple con fosetas gástricas, glándulas fúndicas con células oxínticas (grandes, eosinófilas, canalículos intracelulares) y células principales (basófilas, gránulos apicales), tres capas musculares.
 
 Si la descripción es imprecisa, acota en este orden:
-"¿Cómo es el borde del espacio perinuclear comparado con la muestra anterior?"
-"¿Y el anillo citoplasmático que lo rodea, qué diferencia ves respecto a lo que acabas de describir?"
-"¿El núcleo tiene algo distinto al de la primera muestra?"
+"¿La superficie mucosa es completamente lisa o tiene algún tipo de abertura o hueco?"
+"¿Ves invaginaciones en la superficie mucosa? ¿Cómo las describirías?"
+"Dentro de las glándulas, ¿distingues más de un tipo celular? ¿Qué diferencia ves entre ellas?"
+"Esas células grandes y rosadas que hay en las glándulas, ¿qué característica morfológica te llama la atención?"
 
-Si tras 3–4 intercambios no ha llegado a los tres elementos:
-"El patólogo adjunto siempre dice que para confirmar un coilocito necesita ver tres cosas. Ya has descrito una o dos. ¿Cuál crees que falta?"
+Para avanzar a la muestra C los dos ítems de muestra B deben ser true.
+Si muestra_B_tramo_correcto es false: no confirmes el tramo.
+Si muestra_B_tramo_correcto es true pero muestra_B_argumento_suficiente es false: "Nombrar las fosetas está bien. ¿Y dentro de las glándulas, qué tipos celulares distingues y qué morfología tiene cada uno?"
 
-Para avanzar a Capa 2 los siguientes ítems deben ser true:
-capa1_coilocito_descrito
-capa1_tres_elementos
+MUESTRA C — YEYUNO (uso interno, no revelar)
 
-Si alguno es false, no avanzas. Formula una pregunta lateral que oriente hacia el ítem faltante.
+Cuando los dos ítems de muestra B sean true, introduce:
+"Dos más. Empecemos. Describe la arquitectura general de esta mucosa."
 
-CAPA 2 — INTERPRETACIÓN
+Lo que el estudiante tiene delante: vellosidades intestinales bien desarrolladas, criptas de Lieberkühn en la base, enterocitos con ribete en cepillo visible, células caliciformes escasas, sin glándulas de Brünner en submucosa.
 
-Pregunta de apertura cuando los cuatro ítems de Capa 1 sean true:
-"Con lo que me has descrito de las dos muestras, ¿cuál de las dos contiene coilocitos reales y qué criterio morfológico concreto te hace decantarte?"
+Si la descripción es imprecisa, acota en este orden:
+"¿La superficie mucosa es plana o tiene proyecciones hacia la luz?"
+"¿Esas proyecciones son largas y finas, o cortas y anchas?"
+"Si estas proyecciones no estuvieran en una muestra de intestino, ¿qué significaría eso? ¿Qué tramo quedaría descartado?"
 
-Si clasifica correctamente pero sin jerarquizar:
-"Si solo pudieras mirar un criterio para decidir entre coilocito real y pseudocoilocito, ¿cuál elegirías y por qué?"
+Para avanzar a la muestra D los dos ítems de muestra C deben ser true.
+Si muestra_C_argumento_suficiente es false: "Identificar las vellosidades es correcto. Si una muestra de intestino delgado no las tuviera, ¿qué te indicaría eso sobre ese tejido?"
 
-Cuando capa2_clasificacion_correcta y capa2_criterio_jerarquizado sean true, pregunta:
-"Si esto es un coilocito real, ¿qué nos está diciendo sobre la etiología de esta lesión?"
+MUESTRA D — COLON (uso interno, no revelar)
 
-No nombres VPH primero. Espera a que la estudiante llegue. Cuando capa2_VPH_nombrado sea true:
-"¿Todos los tipos de ese virus tienen el mismo significado clínico para esta paciente de 26 años?"
+Cuando los dos ítems de muestra C sean true, introduce:
+"Última muestra. Misma pregunta."
 
-Cuando capa2_riesgo_diferenciado sea true:
-"Este resultado en la citología, ¿cambia algo en el manejo clínico respecto a una muestra que hubiera sido simplemente negativa?"
+Lo que el estudiante tiene delante: superficie mucosa plana sin vellosidades, criptas de Lieberkühn largas y regulares, abundantes células caliciformes en todo el espesor de las criptas, plexo submucoso con neuronas ganglionares visibles.
 
-Para avanzar al check intermedio los siguientes ítems deben ser true:
-capa2_clasificacion_correcta, capa2_criterio_jerarquizado, capa2_VPH_nombrado, capa2_riesgo_diferenciado, capa2_cambio_manejo
+Si la descripción es imprecisa, acota en este orden:
+"¿Esta mucosa tiene proyecciones como la anterior, o la superficie es diferente?"
+"¿Qué tipo celular predomina en las criptas? ¿Cómo son esas células visualmente?"
+"¿En qué proporción ves esas células respecto a la muestra anterior?"
+"Si solo pudieras usar dos rasgos para distinguir esta muestra de la anterior, ¿cuáles elegirías y por qué no bastaría uno solo?"
 
-CHECK INTERMEDIO
+Pregunta ancla — úsala si el estudiante trata las muestras C y D como intercambiables:
+"Tengo dos biopsias que parecen muy similares a primera vista. ¿Qué estructura microscópica específica te permitiría asegurar que una es yeyuno y la otra colon, sin ningún otro dato clínico?"
 
-Solo cuando los cinco ítems anteriores sean true, lanza:
-"El patólogo adjunto te para en el pasillo y te pregunta: '¿Es un LSIL o son solo cambios por VPH?' ¿Qué le respondes, y por qué en Bethesda esa distinción no existe?"
-
-Para avanzar a Capa 3 el siguiente ítem debe ser true: check_LSIL_Bethesda
-
-Cuando sea true, añade antes de continuar:
-"Bien, aquí paramos un momento. Tu profesora va a hacer una puesta en común con toda la clase antes de seguir."
-
-CAPA 3 — DECISIÓN CLÍNICA
-
-Introduce el nuevo escenario:
-"La ginecóloga llama. El resultado es LSIL, paciente de 26 años, primera citología alterada, sin antecedentes. Le pregunta al patólogo adjunto qué probabilidad hay de que progrese. Te lo traslada a ti. ¿Qué le dices?"
-
-Si cita estadísticas sin contextualizarlas:
-"¿Esos porcentajes cambian algo en lo que le dirías a una paciente de 26 años frente a una de 45?"
-
-Cuando capa3_estadisticas y capa3_contexto_edad sean true:
-"¿En cuánto tiempo puede producirse la transición de LSIL a carcinoma invasor si no se trata ni se controla?"
-
-Pregunta final, solo cuando los tres ítems de capa3 sean true:
-"Con todo lo que hemos visto hoy, vuelvo a la pregunta del principio: ¿el coilocito era un hallazgo o era un diagnóstico? ¿Ha cambiado tu respuesta desde que empezaste la sesión?"
+Para el cierre los dos ítems de muestra D deben ser true.
 
 CIERRE
 
-Cuando capa3_pregunta_final sea true:
-"Antes de terminar: ¿qué parte del razonamiento de hoy te ha costado más construir, y por qué crees que ha sido?"
+Cuando muestra_D_argumento_suficiente sea true:
+"Cuatro muestras, cuatro tramos. El patólogo ya puede firmar el informe. Antes de que pases al diario: ¿qué criterio morfológico de hoy te ha costado más justificar, y por qué crees que ha sido?"
 
 Tras su respuesta:
 "Ahora tómate cinco minutos para rellenar tu diario de sesión."
@@ -192,43 +160,36 @@ No añades nada más."""
 
 # ── Default checklist state ───────────────────────────────────────────────────
 DEFAULT_STATE = {
-    "capa1_no_coilocito_real": False,
-    "capa1_criterio_negativo": False,
-    "capa1_coilocito_descrito": False,
-    "capa1_tres_elementos": False,
-    "capa2_clasificacion_correcta": False,
-    "capa2_criterio_jerarquizado": False,
-    "capa2_VPH_nombrado": False,
-    "capa2_riesgo_diferenciado": False,
-    "capa2_cambio_manejo": False,
-    "check_LSIL_Bethesda": False,
-    "capa3_estadisticas": False,
-    "capa3_contexto_edad": False,
-    "capa3_tiempo_progresion": False,
-    "capa3_pregunta_final": False,
+    "muestra_A_tramo_correcto": False,
+    "muestra_A_argumento_suficiente": False,
+    "muestra_B_tramo_correcto": False,
+    "muestra_B_argumento_suficiente": False,
+    "muestra_C_tramo_correcto": False,
+    "muestra_C_argumento_suficiente": False,
+    "muestra_D_tramo_correcto": False,
+    "muestra_D_argumento_suficiente": False,
 }
 
 ITEM_LABELS = {
-    "capa1_no_coilocito_real": "Muestra A no es coilocito real",
-    "capa1_criterio_negativo": "Criterio negativo identificado",
-    "capa1_coilocito_descrito": "Muestra B descrita",
-    "capa1_tres_elementos": "Tres elementos diagnósticos",
-    "capa2_clasificacion_correcta": "Clasificación correcta",
-    "capa2_criterio_jerarquizado": "Criterio jerarquizado",
-    "capa2_VPH_nombrado": "VPH identificado",
-    "capa2_riesgo_diferenciado": "Riesgo oncogénico diferenciado",
-    "capa2_cambio_manejo": "Cambio en manejo clínico",
-    "check_LSIL_Bethesda": "LSIL/VPH en Bethesda",
-    "capa3_estadisticas": "Estadísticas de progresión",
-    "capa3_contexto_edad": "Contexto por edad",
-    "capa3_tiempo_progresion": "Tiempo de progresión",
-    "capa3_pregunta_final": "Reflexión final",
+    "muestra_A_tramo_correcto":       "Muestra A — tramo identificado",
+    "muestra_A_argumento_suficiente": "Muestra A — argumento suficiente",
+    "muestra_B_tramo_correcto":       "Muestra B — tramo identificado",
+    "muestra_B_argumento_suficiente": "Muestra B — argumento suficiente",
+    "muestra_C_tramo_correcto":       "Muestra C — tramo identificado",
+    "muestra_C_argumento_suficiente": "Muestra C — argumento suficiente",
+    "muestra_D_tramo_correcto":       "Muestra D — tramo identificado",
+    "muestra_D_argumento_suficiente": "Muestra D — argumento suficiente",
 }
 
 LAYERS = {
-    "Capa 1 — Observación": ["capa1_no_coilocito_real", "capa1_criterio_negativo", "capa1_coilocito_descrito", "capa1_tres_elementos"],
-    "Capa 2 — Interpretación": ["capa2_clasificacion_correcta", "capa2_criterio_jerarquizado", "capa2_VPH_nombrado", "capa2_riesgo_diferenciado", "capa2_cambio_manejo", "check_LSIL_Bethesda"],
-    "Capa 3 — Decisión clínica": ["capa3_estadisticas", "capa3_contexto_edad", "capa3_tiempo_progresion", "capa3_pregunta_final"],
+    "Esófago y estómago": [
+        "muestra_A_tramo_correcto", "muestra_A_argumento_suficiente",
+        "muestra_B_tramo_correcto", "muestra_B_argumento_suficiente",
+    ],
+    "Yeyuno y colon": [
+        "muestra_C_tramo_correcto", "muestra_C_argumento_suficiente",
+        "muestra_D_tramo_correcto", "muestra_D_argumento_suficiente",
+    ],
 }
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -240,13 +201,12 @@ def get_client():
     return anthropic.Anthropic(api_key=api_key)
 
 def call_judge(client, history, prev_state):
-    """Call the judge node to evaluate conversation state."""
     history_text = "\n".join([
         f"{'TUTOR' if m['role']=='assistant' else 'ESTUDIANTE'}: {m['content']}"
         for m in history
     ])
     user_msg = f"Estado previo:\n{json.dumps(prev_state, ensure_ascii=False)}\n\nHistorial completo:\n{history_text}"
-    
+
     response = client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=500,
@@ -254,17 +214,14 @@ def call_judge(client, history, prev_state):
         messages=[{"role": "user", "content": user_msg}]
     )
     raw = response.content[0].text.strip()
-    # Strip markdown fences if present
     raw = re.sub(r"```json|```", "", raw).strip()
     new_state = json.loads(raw)
-    # Ensure monotonicity: never go from true to false
     for k in prev_state:
         if prev_state[k] is True:
             new_state[k] = True
     return new_state
 
 def call_tutor(client, history, state):
-    """Call the tutor node."""
     state_block = f"[ESTADO ACTUAL DE LA CHECKLIST]\n{json.dumps(state, ensure_ascii=False, indent=2)}\n\n"
     messages = []
     for m in history:
@@ -272,14 +229,12 @@ def call_tutor(client, history, state):
             messages.append({"role": "user", "content": m["content"]})
         else:
             messages.append({"role": "assistant", "content": m["content"]})
-    
-    # If no messages yet (opening turn), send an initial prompt
+
     if not messages:
         messages = [{"role": "user", "content": state_block + "Comienza la sesión con el mensaje de apertura."}]
-    # Prepend state to last user message
     elif messages[-1]["role"] == "user":
         messages[-1]["content"] = state_block + messages[-1]["content"]
-    
+
     response = client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=400,
@@ -289,7 +244,6 @@ def call_tutor(client, history, state):
     return response.content[0].text.strip()
 
 def save_log(student_id, history, state_history):
-    """Save session log to a JSON file."""
     os.makedirs("logs", exist_ok=True)
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"logs/{student_id}_{timestamp}.json"
@@ -306,7 +260,7 @@ def save_log(student_id, history, state_history):
 
 # ── Session state init ────────────────────────────────────────────────────────
 if "mode" not in st.session_state:
-    st.session_state.mode = "select"  # select | student | teacher
+    st.session_state.mode = "select"
 
 if "history" not in st.session_state:
     st.session_state.history = []
@@ -372,25 +326,13 @@ h1, h2, h3 {
     margin-top: 12px;
     margin-bottom: 4px;
 }
-
-.big-btn {
-    display: inline-block;
-    padding: 16px 32px;
-    border-radius: 12px;
-    font-size: 1.1rem;
-    font-weight: 500;
-    cursor: pointer;
-    margin: 8px;
-    border: 2px solid transparent;
-    transition: all 0.2s;
-}
 </style>
 """, unsafe_allow_html=True)
 
 # ── Mode selector ─────────────────────────────────────────────────────────────
 if st.session_state.mode == "select":
-    st.markdown("# 🔬 Citología Ginecológica")
-    st.markdown("### Sesión 3 · Tutor Socrático")
+    st.markdown("# 🔬 Histología del Tubo Digestivo")
+    st.markdown("### UT3.7 · El Informe Incompleto · Tutor Socrático")
     st.divider()
     col1, col2 = st.columns(2)
     with col1:
@@ -404,44 +346,37 @@ if st.session_state.mode == "select":
 
 # ── Student view ──────────────────────────────────────────────────────────────
 elif st.session_state.mode == "student":
-    st.markdown("## 🔬 Tutor · Citología Ginecológica")
+    st.markdown("## 🔬 Tutor · Histología del Tubo Digestivo")
 
     client = get_client()
 
-    # Initialize conversation with tutor's opening line
     if not st.session_state.initialized:
         opening = call_tutor(client, [], st.session_state.state)
         st.session_state.history.append({"role": "assistant", "content": opening})
         st.session_state.state_history.append(dict(st.session_state.state))
         st.session_state.initialized = True
 
-    # Display chat
     for msg in st.session_state.history:
         role = "assistant" if msg["role"] == "assistant" else "user"
         with st.chat_message(role):
             st.write(msg["content"])
 
-    # Input
     if prompt := st.chat_input("Escribe tu respuesta..."):
         st.session_state.history.append({"role": "user", "content": prompt})
-        
+
         with st.spinner(""):
-            # 1. Judge evaluates
             new_state = call_judge(client, st.session_state.history, st.session_state.state)
             st.session_state.state = new_state
             st.session_state.state_history.append(dict(new_state))
-            
-            # 2. Tutor responds
+
             tutor_reply = call_tutor(client, st.session_state.history, new_state)
             st.session_state.history.append({"role": "assistant", "content": tutor_reply})
-            
-            # 3. Save log
+
             sid = st.session_state.student_id or "sin_id"
             save_log(sid, st.session_state.history, st.session_state.state_history)
 
         st.rerun()
 
-    # Back button
     st.divider()
     if st.button("← Volver"):
         st.session_state.mode = "select"
@@ -455,7 +390,6 @@ elif st.session_state.mode == "student":
 elif st.session_state.mode == "teacher":
     st.markdown("## 👩‍🏫 Panel de Profesora")
 
-    # Password check
     teacher_pass = st.secrets.get("TEACHER_PASSWORD", "citologia2024")
     if "teacher_auth" not in st.session_state:
         st.session_state.teacher_auth = False
@@ -475,7 +409,6 @@ elif st.session_state.mode == "teacher":
 
     st.divider()
 
-    # List log files
     log_dir = "logs"
     if not os.path.exists(log_dir) or not os.listdir(log_dir):
         st.info("Todavía no hay sesiones registradas.")
@@ -494,11 +427,10 @@ elif st.session_state.mode == "teacher":
                 for i, msg in enumerate(data["conversation"]):
                     role = "🤖 Tutor" if msg["role"] == "assistant" else "👩‍🎓 Alumna"
                     state_at_turn = data["state_history"][i] if i < len(data["state_history"]) else None
-                    
+
                     with st.expander(f"**{role}** — turno {i+1}", expanded=True):
                         st.write(msg["content"])
                         if state_at_turn and msg["role"] == "user":
-                            # Show which items changed in this turn
                             prev = data["state_history"][i-1] if i > 0 else DEFAULT_STATE
                             new_items = [k for k in state_at_turn if state_at_turn[k] and not prev.get(k)]
                             if new_items:
@@ -526,12 +458,11 @@ elif st.session_state.mode == "teacher":
 
                 st.divider()
                 st.markdown("### 📈 Evolución turno a turno")
-                # Build a simple table
                 if data["state_history"]:
+                    import pandas as pd
                     rows = []
                     for i, s in enumerate(data["state_history"]):
                         rows.append({"Turno": i+1, "Ítems completados": sum(1 for v in s.values() if v)})
-                    import pandas as pd
                     df = pd.DataFrame(rows)
                     st.line_chart(df.set_index("Turno"))
 
