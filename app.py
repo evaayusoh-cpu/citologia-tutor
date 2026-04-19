@@ -262,7 +262,7 @@ def call_judge(client, history, prev_state):
     user_msg = f"Estado previo:\n{json.dumps(prev_state, ensure_ascii=False)}\n\nHistorial completo:\n{history_text}"
 
     response = client.messages.create(
-        model="claude-sonnet-4-20250514",
+        model="claude-sonnet-4-5",
         max_tokens=500,
         system=JUDGE_PROMPT,
         messages=[{"role": "user", "content": user_msg}]
