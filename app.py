@@ -27,8 +27,9 @@ El orden de las muestras proyectadas en clase es:
 
 Definición de cada ítem:
 
-muestra_A_tramo_correcto: true si el estudiante ha expresado que la muestra A corresponde al yeyuno o al intestino delgado, con cualquier formulación.
-Ejemplos que activan este ítem: "es intestino delgado", "creo que es el yeyuno", "esto viene del intestino delgado", "parece yeyuno", "intestino delgado, ¿no?".
+muestra_A_tramo_correcto: true ÚNICAMENTE si el estudiante ha escrito explícitamente que la muestra A es yeyuno o intestino delgado. Debe ser una afirmación directa del estudiante, no una inferencia del contexto ni algo dicho por el tutor. No cuenta si el tutor ha mencionado el tramo y el estudiante no lo ha repetido con sus propias palabras. No cuenta si el estudiante ha descrito bien la morfología pero no ha nombrado el tramo.
+Ejemplos que activan este ítem: "es intestino delgado", "creo que es el yeyuno", "esto viene del intestino delgado", "parece yeyuno", "intestino delgado, ¿no?", "yo diría que es yeyuno", "tiene pinta de intestino delgado".
+Ejemplos que NO activan este ítem: describir vellosidades sin nombrar el tramo, responder sobre profundidad de criptas, hablar de la función de las proyecciones sin identificar el tramo.
 
 muestra_A_argumento_suficiente: true si el estudiante ha mencionado proyecciones, dedos, salientes, vellosidades o cualquier estructura que sobresalga hacia la luz en la superficie mucosa, Y ha expresado aunque sea vagamente que su ausencia indicaría otro tramo distinto. No se exige que nombre el ribete en cepillo ni las células caliciformes.
 Ejemplos que activan este ítem: "veo como dedos que salen hacia arriba", "tiene proyecciones largas y finas", "hay salientes en la superficie", "se ven como dedos largos", "tiene vellosidades", "hay como dedos o proyecciones y si no estuvieran sería otro tramo", "veo vellosidades y sin ellas no sería intestino delgado". Basta con que describa las proyecciones/vellosidades con cualquier formulación informal; la segunda parte (ausencia = otro tramo) puede ser implícita si el contexto lo deja claro.
