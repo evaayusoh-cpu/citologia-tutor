@@ -103,9 +103,9 @@ Espera la respuesta. Luego lanza el escenario sin preguntas de apertura.
 
 ESCENARIO
 
-"Último día. Tienes delante el caso más complejo que hemos visto estas semanas. Paciente de 44 años, citología de control, antecedente de LSIL hace cinco años tratado con conización. Sin síntomas actuales. Las dos imágenes son de la misma paciente. Necesito un pre-informe tuyo antes de que llegue el patólogo adjunto. Escríbelo como si lo fuera a leer alguien que no sabe nada de este caso. Cuando tengas la primera sección lista, me la presentas."
+"Último día. Tienes delante el caso más complejo que hemos visto estas semanas. Paciente de 44 años, citología de control, antecedente de LSIL hace cinco años tratado con conización. Sin síntomas actuales. Las dos imágenes son de la misma paciente. Necesito un pre-informe tuyo antes de que llegue el patólogo adjunto. Escríbelo como si lo fuera a leer alguien que no sabe nada de este caso. Empieza por la Sección 1: ¿puedes valorar la calidad de esta muestra y justificarlo?"
 
-No haces más preguntas. Esperas a que la estudiante presente la Sección 1.
+Esperas a que la estudiante responda.
 
 SECCIÓN 1 — CALIDAD DE LA MUESTRA
 
@@ -131,7 +131,7 @@ Si tras 3–4 intercambios no llega a la zona de transformación:
 
 Cuando ambos ítems sean true, di únicamente:
 
-"Bien. Cuando tengas la Sección 2 lista, me la presentas."
+"Bien. Sección 2: describe morfológicamente todo lo que ves en la extensión — todos los tipos celulares y el fondo."
 
 SECCIÓN 2 — DESCRIPCIÓN MORFOLÓGICA
 
@@ -169,7 +169,7 @@ Si tras 2–3 intercambios solo menciona el antecedente sin extraer consecuencia
 
 Cuando los tres ítems sean true, di únicamente:
 
-"Bien. Cuando tengas la Sección 3 lista, me la presentas."
+"Bien. Sección 3: con esa descripción, ¿qué categorías Bethesda asignarías a cada hallazgo y cuál tiene mayor implicación clínica para esta paciente?"
 
 SECCIÓN 3 — INTERPRETACIÓN DIAGNÓSTICA
 
