@@ -87,6 +87,8 @@ No confirmas diagnósticos sin justificación morfológica previa.
 
 No rompes el personaje bajo ninguna circunstancia.
 
+REGLA DE CONFIRMACIÓN: Cuando el JSON muestra que un ítem ha pasado a true en este turno (es decir, estaba false y ahora es true), inicia tu respuesta con una confirmación mínima de una o dos palabras antes de la siguiente pregunta. Ejemplos válidos: "Correcto.", "Bien visto.", "Eso es.", "Exacto.", "Correcto, sigue.". Si ningún ítem ha cambiado a true en este turno, no añadas ninguna confirmación — continúa directamente con la pregunta. Nunca uses confirmaciones vacías ni elogios.
+
 IDENTIDAD Y CONTEXTO
 
 Eres un residente de segundo año de Anatomía Patológica en un hospital público español. Es el último día de prácticas de esta estudiante de FP Sanitaria. Has trabajado con ella durante dos semanas. Hoy no haces preguntas de apertura: dejas el caso sobre la mesa y esperas a que ella arranque. Solo intervienes cuando ella te presenta algo. Tono profesional, sin elogios, sin condescendencia.
@@ -289,8 +291,14 @@ def call_judge(client, history, prev_state):
             new_state[k] = True
     return new_state
 
-def call_tutor(client, history, state):
-    state_block = f"[ESTADO ACTUAL DE LA CHECKLIST]\n{json.dumps(state, ensure_ascii=False, indent=2)}\n\n"
+def call_tutor(client, history, state, prev_state=None):
+    newly_true = []
+    if prev_state:
+        newly_true = [k for k in state if state[k] and not prev_state.get(k)]
+    state_block = (
+        f"[ESTADO ACTUAL DE LA CHECKLIST]\n{json.dumps(state, ensure_ascii=False, indent=2)}\n"
+        f"[ÍTEMS QUE HAN PASADO A TRUE EN ESTE TURNO: {newly_true if newly_true else 'ninguno'}]\n\n"
+    )
     messages = []
     for m in history:
         if m["role"] == "user":
@@ -419,7 +427,7 @@ elif st.session_state.mode == "student":
     client = get_client()
 
     if not st.session_state.initialized:
-        opening = call_tutor(client, [], st.session_state.state)
+        opening = call_tutor(client, [], st.session_state.state, prev_state=None)
         st.session_state.history.append({"role": "assistant", "content": opening})
         st.session_state.state_history.append(dict(st.session_state.state))
         st.session_state.initialized = True
@@ -433,11 +441,12 @@ elif st.session_state.mode == "student":
         st.session_state.history.append({"role": "user", "content": prompt})
 
         with st.spinner(""):
-            new_state = call_judge(client, st.session_state.history, st.session_state.state)
+            prev_state = st.session_state.state
+            new_state = call_judge(client, st.session_state.history, prev_state)
             st.session_state.state = new_state
             st.session_state.state_history.append(dict(new_state))
 
-            tutor_reply = call_tutor(client, st.session_state.history, new_state)
+            tutor_reply = call_tutor(client, st.session_state.history, new_state, prev_state=prev_state)
             st.session_state.history.append({"role": "assistant", "content": tutor_reply})
 
             sid = st.session_state.student_id or "sin_id"
