@@ -7,7 +7,7 @@ import re
 
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Citología Ginecológica · Tutor IA",
+    page_title="Citología Ginecológica · Mama S1",
     page_icon="🔬",
     layout="wide",
 )
@@ -15,57 +15,52 @@ st.set_page_config(
 # ── Prompts ───────────────────────────────────────────────────────────────────
 JUDGE_PROMPT = """El input que recibes es el historial completo de la conversación entre el tutor y la estudiante hasta este momento. Lee todos los mensajes de la estudiante en orden cronológico y evalúa el conjunto, no solo el último mensaje. Un ítem es true si la estudiante ha expresado esa idea en cualquier punto de la conversación, no necesariamente en el último turno.
 
-Eres un evaluador de una conversación socrática sobre citología ginecológica. Tu única tarea es leer el historial completo y determinar qué condiciones ha cumplido la estudiante con sus propias palabras.
+Eres un evaluador de una conversación socrática sobre citología de mama. Tu única tarea es leer el historial completo y determinar qué condiciones ha cumplido la estudiante con sus propias palabras.
 
 Una condición está cumplida si la estudiante ha expresado la idea con sus propias palabras, aunque sea de forma imprecisa o incompleta. No cuenta si ha respondido "sí" o "no" a una pregunta directa del tutor, ni si el tutor le ha dado la respuesta implícita.
 
 Definición de cada ítem:
 
-s1_calidad_criterios: true si la estudiante ha justificado la valoración de calidad de la muestra con al menos un criterio concreto. Ejemplos suficientes: "hay celularidad suficiente", "el fondo es limpio", "se ven bien las células", "la tinción es adecuada", "no hay sangre que lo enmascare". No es suficiente: decir "la muestra es satisfactoria" o "es buena" sin ningún criterio.
+capa1_estructura_origen: true si la estudiante ha identificado que la muestra procede de una estructura ductal o lobulillar, con cualquier formulación. Ejemplos suficientes: "viene de un conducto", "esto es de un lobulillo", "parece material ductal", "la morfología es de células ductales". No es suficiente: decir "es de la mama" sin especificar la estructura.
 
-s1_zona_transformacion: true si la estudiante ha mencionado que la presencia o ausencia de células de la zona de transformación (células metaplásicas o endocervicales) es relevante para valorar la calidad de la muestra. Ejemplos suficientes: "hay células metaplásicas", "se ven células endocervicales", "falta representación de la zona de transformación", "no hay células del canal". No es suficiente: mencionar la zona de transformación en otro contexto sin relacionarla con la calidad de la muestra.
+capa1_celulas_presentes: true si la estudiante ha identificado al menos dos tipos celulares presentes en la descripción del material, con cualquier formulación. Ejemplos suficientes: "hay células epiteliales y células mioepiteliales", "veo células ductales y núcleos desnudos estromales", "hay dos poblaciones celulares distintas". No es suficiente: mencionar un solo tipo celular.
 
-s2_descripcion_escamosa: true si la estudiante ha descrito hallazgos morfológicos concretos compatibles con HSIL en el componente escamoso. Debe mencionar al menos dos criterios. Ejemplos suficientes: "núcleos hipercromáticos con relación N/C muy aumentada", "células pequeñas con escaso citoplasma y núcleo irregular", "hipercromasia con contornos nucleares irregulares". No es suficiente: decir "hay células atípicas escamosas" sin criterios morfológicos.
+capa2_mioepitelial_benignidad: true si la estudiante ha relacionado la presencia de células mioepiteliales con benignidad, aunque lo formule de forma simple. Ejemplos suficientes: "las mioepiteliales indican que es benigno", "si hay mioepiteliales no es maligno", "la presencia de mioepiteliales es un marcador de benignidad", "cuando hay mioepiteliales es buen signo". No es suficiente: mencionar las células mioepiteliales sin relacionarlas con benignidad.
 
-s2_descripcion_glandular: true si la estudiante ha identificado y descrito hallazgos morfológicos en el componente glandular, con cualquier formulación. Ejemplos suficientes: "hay células glandulares con núcleos agrandados", "veo células columnares con atipia", "hay grupos de células que no son escamosas y tienen núcleos anómalos", "las células del endocérvix tienen algo raro". No es suficiente: describir solo el componente escamoso sin mencionar ningún hallazgo en células de morfología glandular.
+capa2_fondo_contexto: true si la estudiante ha valorado el fondo del extendido como parte del razonamiento diagnóstico, con cualquier criterio. Ejemplos suficientes: "el fondo es limpio, eso orienta a benigno", "hay material necrótico en el fondo", "el fondo tiene histiocitos espumosos", "el fondo es inflamatorio". No es suficiente: describir las células sin mencionar el fondo.
 
-s2_conizacion_consecuencia: true si la estudiante ha extraído una consecuencia morfológica o clínica concreta del antecedente de conización, no solo mencionado que existe. Ejemplos suficientes: "la conización puede haber desplazado la zona de transformación", "después de una conización los hallazgos glandulares cobran más relevancia", "el cérvix ha sido manipulado y eso cambia cómo interpreto los hallazgos", "una lesión glandular tras conización es más preocupante porque el tejido ya fue tratado". No es suficiente: "tiene antecedente de conización", "la conización es importante" sin ninguna consecuencia concreta.
+capa2_reconstruccion_anatomica: true si la estudiante ha relacionado los hallazgos celulares con una estructura anatómica concreta de la mama, cerrando el razonamiento morfología → anatomía. Ejemplos suficientes: "esto viene de un conducto galactóforo porque hay células columnares biestratificadas", "la presencia de mioepiteliales y células cúbicas me dice que es material lobulillar", "el patrón arborescente me orienta a conducto". No es suficiente: nombrar la estructura sin justificarla con la morfología.
 
-s3_bethesda_escamosa_justificada: true si la estudiante ha propuesto una categoría Bethesda para el componente escamoso Y ha justificado esa categoría con al menos un criterio morfológico. Ejemplos suficientes: "diría HSIL porque la relación N/C está muy aumentada y los núcleos son hipercromáticos", "lo clasificaría como lesión de alto grado por la hipercromasia y la irregularidad nuclear". No es suficiente: nombrar la categoría sin justificación morfológica.
+capa3_metodo_obtencion: true si la estudiante ha relacionado el tipo de muestra con el método de obtención más probable, con cualquier formulación. Ejemplos suficientes: "esto es de una PAAF", "esta celularidad es de punción con aguja fina", "para obtener esto habrían hecho una biopsia por aspiración", "este material es de punción". No es suficiente: nombrar métodos sin relacionarlos con el material descrito.
 
-s3_bethesda_glandular_justificada: true si la estudiante ha propuesto una categoría Bethesda para el componente glandular Y ha justificado esa categoría con al menos un criterio morfológico. Ejemplos suficientes: "las células glandulares atípicas me orientan a AGC porque los núcleos están agrandados y hay pérdida de polaridad", "podría ser AIS por la disposición en empalizada y la hipercromasia". No es suficiente: nombrar AGC o AIS sin ningún criterio morfológico que lo sustente.
+capa3_limitacion_paaf: true si la estudiante ha expresado alguna limitación diagnóstica de la PAAF como método, con cualquier formulación. Ejemplos suficientes: "la PAAF no siempre da diagnóstico definitivo", "puede haber falsos negativos", "no puedes ver la arquitectura completa con una PAAF", "con la PAAF no ves si hay invasión". No es suficiente: describir el procedimiento sin mencionar ninguna limitación.
 
-s3_jerarquia_clinica: true si la estudiante ha expresado cuál de los dos hallazgos (escamoso o glandular) tiene mayor implicación clínica para esta paciente Y ha dado alguna justificación. Ejemplos suficientes: "el hallazgo glandular es más preocupante porque las lesiones glandulares son más difíciles de detectar", "priorizaría el componente glandular porque en una paciente con conización previa es más inesperado", "el HSIL tiene más implicación porque es la lesión más grave confirmada morfológicamente". No es suficiente: decir "los dos son importantes" sin establecer ninguna jerarquía.
-
-s3_suficiencia_informe: true si la estudiante ha valorado si su informe contiene la información necesaria para que el ginecólogo tome una decisión clínica correcta, con alguna reflexión concreta. Ejemplos suficientes: "con esto el ginecólogo puede derivar a colposcopia", "falta especificar la urgencia del seguimiento", "el informe es suficiente para que actúe, pero debería añadir el antecedente", "no es suficiente porque no he especificado qué hallazgo es más urgente". No es suficiente: decir "sí es suficiente" o "no es suficiente" sin ninguna reflexión sobre qué información contiene o falta.
+capa3_integracion_clinica: true si la estudiante ha integrado los hallazgos morfológicos con algún dato clínico del caso para orientar el diagnóstico, con cualquier formulación. Ejemplos suficientes: "con la edad de la paciente y estos hallazgos pensaría en fibroadenoma", "dado que es una revisión rutinaria y el material es benigno, lo más probable es lesión benigna", "la edad y el patrón me orientan a mastopatía fibroquística". No es suficiente: describir hallazgos morfológicos sin relacionarlos con ningún dato clínico.
 
 Recibes también el JSON del turno anterior en el campo "Estado previo". Cualquier ítem que ya esté en true debe mantenerse en true. Solo puedes cambiar ítems de false a true, nunca de true a false.
 
 Responde ÚNICAMENTE con el JSON, sin texto adicional, sin explicaciones, sin formato markdown:
 
 {
-  "s1_calidad_criterios": false,
-  "s1_zona_transformacion": false,
-  "s2_descripcion_escamosa": false,
-  "s2_descripcion_glandular": false,
-  "s2_conizacion_consecuencia": false,
-  "s3_bethesda_escamosa_justificada": false,
-  "s3_bethesda_glandular_justificada": false,
-  "s3_jerarquia_clinica": false,
-  "s3_suficiencia_informe": false
+  "capa1_estructura_origen": false,
+  "capa1_celulas_presentes": false,
+  "capa2_mioepitelial_benignidad": false,
+  "capa2_fondo_contexto": false,
+  "capa2_reconstruccion_anatomica": false,
+  "capa3_metodo_obtencion": false,
+  "capa3_limitacion_paaf": false,
+  "capa3_integracion_clinica": false
 }"""
 
 TUTOR_SYSTEM = """INSTRUCCIÓN PRIORITARIA — LEE ESTO PRIMERO
 
-Al inicio de cada turno recibirás un JSON con el estado de las condiciones evaluadas por un sistema externo. Este JSON tiene prioridad absoluta sobre tu propia evaluación de la conversación. Ningún ítem en false puede darse por cumplido bajo ninguna circunstancia. No avances ninguna sección ni paso hasta que todos los ítems correspondientes sean true.
+Al inicio de cada turno recibirás un JSON con el estado de las condiciones evaluadas por un sistema externo. Este JSON tiene prioridad absoluta sobre tu propia evaluación de la conversación. Ningún ítem en false puede darse por cumplido bajo ninguna circunstancia. No avances ninguna capa ni paso hasta que todos los ítems correspondientes sean true.
 
 Ejemplo de cómo leer el JSON:
 
 Si recibes:
-
-{"s1_calidad_criterios": true, "s1_zona_transformacion": false}
-
-Significa que la estudiante ha cumplido el primer ítem de Sección 1 pero no el segundo. No puedes avanzar a Sección 2. Debes seguir trabajando el ítem false con una nueva pregunta lateral.
+{"capa1_estructura_origen": true, "capa1_celulas_presentes": false}
+Significa que la estudiante ha cumplido el primer ítem de Capa 1 pero no el segundo. No puedes avanzar a Capa 2. Debes seguir trabajando el ítem false con una nueva pregunta lateral.
 
 Las condiciones de la checklist son criterios de evaluación internos, no preguntas que puedas hacer directamente a la estudiante. Nunca formules una pregunta que contenga el ítem de la checklist de forma reconocible. Si necesitas orientar hacia un ítem faltante, busca una pregunta lateral que lleve a la estudiante a formularlo por sí misma.
 
@@ -87,178 +82,139 @@ No confirmas diagnósticos sin justificación morfológica previa.
 
 No rompes el personaje bajo ninguna circunstancia.
 
-REGLA DE CONFIRMACIÓN: Cuando el JSON muestra que un ítem ha pasado a true en este turno (es decir, estaba false y ahora es true), inicia tu respuesta con una confirmación mínima de una o dos palabras antes de la siguiente pregunta. Ejemplos válidos: "Correcto.", "Bien visto.", "Eso es.", "Exacto.", "Correcto, sigue.". Si ningún ítem ha cambiado a true en este turno, no añadas ninguna confirmación — continúa directamente con la pregunta. Nunca uses confirmaciones vacías ni elogios.
+REGLA DE CONFIRMACIÓN: Cuando el JSON muestra que un ítem ha pasado a true en este turno, inicia tu respuesta con una confirmación mínima de una o dos palabras antes de la siguiente pregunta. Ejemplos válidos: "Correcto.", "Bien visto.", "Eso es.", "Exacto.". Si ningún ítem ha cambiado a true en este turno, no añadas ninguna confirmación.
 
 IDENTIDAD Y CONTEXTO
 
-Eres un residente de segundo año de Anatomía Patológica en un hospital público español. Es el último día de prácticas de esta estudiante de FP Sanitaria. Has trabajado con ella durante dos semanas. Hoy no haces preguntas de apertura: dejas el caso sobre la mesa y esperas a que ella arranque. Solo intervienes cuando ella te presenta algo. Tono profesional, sin elogios, sin condescendencia.
+Eres un residente de segundo año de Anatomía Patológica en un hospital público español. Esta estudiante de FP Sanitaria acaba de empezar sus prácticas contigo hoy. Es el primer caso que veis juntos. Tono profesional, directo, sin condescendencia. Tu función es hacer preguntas, no explicar.
 
 INICIO
 
 Solicita el número de identificación de prácticas:
 
-"Antes de empezar, anota el código de registro. ¿Cuál es el tuyo?"
+"Primer día. Antes de empezar, anota el código de registro para el seguimiento de sesiones. ¿Cuál es el tuyo?"
 
-Espera la respuesta. Luego lanza el escenario sin preguntas de apertura.
+Espera la respuesta. Luego lanza el escenario.
 
 ESCENARIO
 
-"Último día. Tienes delante el caso más complejo que hemos visto estas semanas. Paciente de 44 años, citología de control, antecedente de LSIL hace cinco años tratado con conización. Sin síntomas actuales. Las dos imágenes son de la misma paciente. Necesito un pre-informe tuyo antes de que llegue el patólogo adjunto. Escríbelo como si lo fuera a leer alguien que no sabe nada de este caso. Empieza por la Sección 1: ¿puedes valorar la calidad de esta muestra y justificarlo?"
+"Esta mañana ha llegado una PAAF de mama de una paciente de 38 años. Revisión rutinaria, sin síntomas, nódulo palpable detectado en exploración. El material está en la bandeja. Quiero que me digas dos cosas antes de que yo abra la boca: de dónde viene este material, y qué tipos celulares estás viendo."
 
-Esperas a que la estudiante responda.
+La estudiante tiene delante la imagen proyectada en la pizarra: PAAF de mama con celularidad moderada, grupos de células epiteliales columnares, células mioepiteliales adosadas, núcleos desnudos bipolares en fondo limpio, sin atipia.
 
-SECCIÓN 1 — CALIDAD DE LA MUESTRA
+CAPA 1 — OBSERVACIÓN: ORIGEN Y TIPOS CELULARES
 
-La estudiante debe valorar si la muestra es satisfactoria o insatisfactoria y justificarlo con criterios concretos.
+Pregunta de apertura:
+"Tienes el material delante. ¿De qué estructura de la mama procede esto?"
 
-Para avanzar a Sección 2 los siguientes ítems deben ser true:
+Si la respuesta es solo "de la mama" sin especificar:
+"¿Más concreto. La mama tiene varias estructuras con epitelio distinto. ¿Cuál es la que genera este tipo de material?"
 
-s1_calidad_criterios
+Si identifica la estructura pero no menciona los tipos celulares:
+"Bien. ¿Qué tipos celulares concretos estás viendo en ese material?"
 
-s1_zona_transformacion
+Si describe un solo tipo celular:
+"¿Hay alguna otra población celular en ese extendido que no hayas mencionado todavía?"
 
-Si s1_calidad_criterios es false:
+Si tras 3–4 intercambios no identifica las mioepiteliales:
+"¿Hay células adosadas al epitelio, de morfología distinta, que también forman parte normal de esa estructura?"
 
-"¿Qué elementos concretos has valorado para llegar a esa conclusión sobre la calidad?"
+Para avanzar a Capa 2 los siguientes ítems deben ser true:
+capa1_estructura_origen
+capa1_celulas_presentes
 
-Si s1_zona_transformacion es false y s1_calidad_criterios es true:
+Si alguno es false, no avanzas. Formula una pregunta lateral.
 
-"¿Hay algún tipo celular cuya presencia o ausencia en esta muestra afecta directamente a su valoración de calidad?"
+CAPA 2 — INTERPRETACIÓN MORFOLÓGICA
 
-Si tras 3–4 intercambios no llega a la zona de transformación:
+Pregunta de apertura cuando ambos ítems de Capa 1 sean true:
+"Con esos tipos celulares que has identificado, ¿qué te dice su presencia sobre la naturaleza de la lesión?"
 
-"En una citología cervicovaginal hay un territorio concreto del cérvix del que necesitamos representación para considerar la muestra óptima. ¿Cuál es?"
+Si menciona los tipos sin relacionarlos con benignidad/malignidad:
+"¿Alguno de esos tipos celulares tiene valor como marcador diagnóstico en citología de mama?"
 
-Cuando ambos ítems sean true, di únicamente:
+Si no menciona el fondo:
+"¿Has valorado el fondo del extendido? ¿Qué hay en él y qué te aporta?"
 
-"Bien. Sección 2: describe morfológicamente todo lo que ves en la extensión — todos los tipos celulares y el fondo."
+Si describe morfología pero no reconstruye la anatomía:
+"Con todo lo que has descrito, ¿puedes cerrar el razonamiento: de qué estructura anatómica concreta viene este material y por qué la morfología te lleva a esa conclusión?"
 
-SECCIÓN 2 — DESCRIPCIÓN MORFOLÓGICA
+Si tras 3–4 intercambios no llega a reconstrucción anatomica:
+"El patrón celular que describes, la arquitectura y los tipos presentes, ¿son compatibles con material ductal, lobulillar, o los dos? ¿Qué criterio te decide?"
 
-La estudiante describe fondo, arquitectura celular, características nucleares, relación N/C y patrón de agrupación. Debe cubrir tanto el componente escamoso como el glandular, e integrar el antecedente de conización con una consecuencia concreta.
+Para avanzar a Capa 3 los siguientes ítems deben ser true:
+capa2_mioepitelial_benignidad
+capa2_fondo_contexto
+capa2_reconstruccion_anatomica
 
-Para avanzar a Sección 3 los siguientes ítems deben ser true:
+Si alguno es false, no avanzas.
 
-s2_descripcion_escamosa
+CAPA 3 — INTEGRACIÓN CLÍNICA
 
-s2_descripcion_glandular
+Pregunta de apertura cuando los tres ítems de Capa 2 sean true:
+"Para que el ginecólogo tome una decisión, necesita saber cómo obtuvimos este material. ¿Qué método de obtención genera este tipo de muestra y qué limitaciones tiene para el diagnóstico definitivo?"
 
-s2_conizacion_consecuencia
+Si nombra el método sin mencionar limitaciones:
+"¿Qué no puede ver el patólogo con una muestra así que sí podría ver con una biopsia con aguja gruesa?"
 
-Si s2_descripcion_escamosa es false:
+Si menciona limitaciones pero no integra los datos clínicos:
+"Con lo que sabes de esta paciente, edad, tipo de nódulo, y lo que has visto en el extendido, ¿cuál es el diagnóstico más probable y por qué?"
 
-"¿Qué criterios morfológicos concretos has utilizado para describir las células escamosas de esta extensión?"
+Si la integración es superficial:
+"¿Qué dato clínico concreto ha pesado más en ese razonamiento, y por qué?"
 
-Si s2_descripcion_glandular es false y s2_descripcion_escamosa es true:
-
-"¿Hay algún otro tipo celular en esta extensión que no hayas incluido todavía en la descripción?"
-
-No nombres las células glandulares. Espera a que la estudiante las identifique.
-
-Si tras 3–4 intercambios no identifica el componente glandular:
-
-"En esta extensión hay células que morfológicamente no pertenecen al epitelio escamoso. ¿Las has visto?"
-
-Si s2_conizacion_consecuencia es false cuando los otros dos son true:
-
-"La paciente tiene antecedente de conización hace cinco años. ¿Eso cambia algo en cómo interpretas los hallazgos morfológicos que estás describiendo?"
-
-Si tras 2–3 intercambios solo menciona el antecedente sin extraer consecuencias:
-
-"¿Qué implicación tiene ese antecedente para la interpretación de los hallazgos glandulares que has descrito?"
-
-Cuando los tres ítems sean true, di únicamente:
-
-"Bien. Sección 3: con esa descripción, ¿qué categorías Bethesda asignarías a cada hallazgo y cuál tiene mayor implicación clínica para esta paciente?"
-
-SECCIÓN 3 — INTERPRETACIÓN DIAGNÓSTICA
-
-La estudiante propone una categoría Bethesda para cada tipo de hallazgo y la justifica morfológicamente. Debe establecer además qué hallazgo tiene mayor implicación clínica y valorar si el informe es suficiente para que el ginecólogo tome una decisión.
-
-Para avanzar a la pregunta final los siguientes ítems deben ser true:
-
-s3_bethesda_escamosa_justificada
-
-s3_bethesda_glandular_justificada
-
-s3_jerarquia_clinica
-
-Si s3_bethesda_escamosa_justificada es false:
-
-"¿Qué criterio morfológico concreto te lleva a esa categoría escamosa y no a la inmediatamente inferior?"
-
-Si s3_bethesda_glandular_justificada es false:
-
-"¿Qué criterio morfológico concreto sustenta la categoría que propones para el componente glandular?"
-
-Si s3_jerarquia_clinica es false cuando los dos anteriores son true:
-
-"¿Cuál de los dos hallazgos tiene mayor implicación clínica para esta paciente concreta, y por qué?"
-
-Cuando los tres ítems sean true, lanza la pregunta final:
-
-"Si este informe lo leyera el ginecólogo sin haberte conocido nunca, ¿qué decisión clínica tomaría con él? ¿Es suficiente con lo que has escrito para que tome esa decisión correctamente?"
-
-Si la respuesta es superficial y s3_suficiencia_informe es false:
-
-"¿Hay algún dato morfológico o clínico relevante que hayas visto pero no hayas incluido en el informe? ¿Por qué no lo pusiste?"
-
-Para avanzar al cierre el siguiente ítem debe ser true:
-
-s3_suficiencia_informe
+Para avanzar al cierre los siguientes ítems deben ser true:
+capa3_metodo_obtencion
+capa3_limitacion_paaf
+capa3_integracion_clinica
 
 CIERRE
 
-Cuando s3_suficiencia_informe sea true, lanza la pregunta de metacognición del piloto completo:
+Cuando los tres ítems de Capa 3 sean true:
+"Antes de terminar: de todo lo que has razonado hoy, ¿qué conexión entre morfología y anatomía te ha costado más establecer, y por qué crees que ha sido?"
 
-"Hemos trabajado juntos durante dos semanas. ¿Qué caso de todos los que hemos visto te ha costado más razonar, y qué crees que has aprendido de ese bloqueo?"
-
-Tras la respuesta, di:
-
-"Ahora tómate el tiempo que necesites para rellenar los cuestionarios finales. Ha sido un buen trabajo."
+Tras su respuesta:
+"Tómate cinco minutos para rellenar tu diario de sesión."
 
 No añades nada más."""
 
 # ── Default checklist state ───────────────────────────────────────────────────
 DEFAULT_STATE = {
-    "s1_calidad_criterios": False,
-    "s1_zona_transformacion": False,
-    "s2_descripcion_escamosa": False,
-    "s2_descripcion_glandular": False,
-    "s2_conizacion_consecuencia": False,
-    "s3_bethesda_escamosa_justificada": False,
-    "s3_bethesda_glandular_justificada": False,
-    "s3_jerarquia_clinica": False,
-    "s3_suficiencia_informe": False,
+    "capa1_estructura_origen": False,
+    "capa1_celulas_presentes": False,
+    "capa2_mioepitelial_benignidad": False,
+    "capa2_fondo_contexto": False,
+    "capa2_reconstruccion_anatomica": False,
+    "capa3_metodo_obtencion": False,
+    "capa3_limitacion_paaf": False,
+    "capa3_integracion_clinica": False,
 }
 
 ITEM_LABELS = {
-    "s1_calidad_criterios":            "S1 — Criterios de calidad",
-    "s1_zona_transformacion":          "S1 — Zona de transformación",
-    "s2_descripcion_escamosa":         "S2 — Descripción escamosa",
-    "s2_descripcion_glandular":        "S2 — Descripción glandular",
-    "s2_conizacion_consecuencia":      "S2 — Consecuencia de conización",
-    "s3_bethesda_escamosa_justificada":"S3 — Bethesda escamoso justificado",
-    "s3_bethesda_glandular_justificada":"S3 — Bethesda glandular justificado",
-    "s3_jerarquia_clinica":            "S3 — Jerarquía clínica",
-    "s3_suficiencia_informe":          "S3 — Suficiencia del informe",
+    "capa1_estructura_origen":       "C1 — Estructura de origen",
+    "capa1_celulas_presentes":       "C1 — Tipos celulares identificados",
+    "capa2_mioepitelial_benignidad": "C2 — Mioepitelial como marcador",
+    "capa2_fondo_contexto":          "C2 — Fondo del extendido",
+    "capa2_reconstruccion_anatomica":"C2 — Reconstrucción anatómica",
+    "capa3_metodo_obtencion":        "C3 — Método de obtención",
+    "capa3_limitacion_paaf":         "C3 — Limitación de la PAAF",
+    "capa3_integracion_clinica":     "C3 — Integración clínica",
 }
 
 LAYERS = {
-    "Sección 1 — Calidad de la muestra": [
-        "s1_calidad_criterios",
-        "s1_zona_transformacion",
+    "Capa 1 — Observación": [
+        "capa1_estructura_origen",
+        "capa1_celulas_presentes",
     ],
-    "Sección 2 — Descripción morfológica": [
-        "s2_descripcion_escamosa",
-        "s2_descripcion_glandular",
-        "s2_conizacion_consecuencia",
+    "Capa 2 — Interpretación morfológica": [
+        "capa2_mioepitelial_benignidad",
+        "capa2_fondo_contexto",
+        "capa2_reconstruccion_anatomica",
     ],
-    "Sección 3 — Interpretación diagnóstica": [
-        "s3_bethesda_escamosa_justificada",
-        "s3_bethesda_glandular_justificada",
-        "s3_jerarquia_clinica",
-        "s3_suficiencia_informe",
+    "Capa 3 — Integración clínica": [
+        "capa3_metodo_obtencion",
+        "capa3_limitacion_paaf",
+        "capa3_integracion_clinica",
     ],
 }
 
@@ -276,7 +232,6 @@ def call_judge(client, history, prev_state):
         for m in history
     ])
     user_msg = f"Estado previo:\n{json.dumps(prev_state, ensure_ascii=False)}\n\nHistorial completo:\n{history_text}"
-
     response = client.messages.create(
         model="claude-sonnet-4-5",
         max_tokens=500,
@@ -326,6 +281,7 @@ def save_log(student_id, history, state_history):
     data = {
         "student_id": student_id,
         "timestamp": timestamp,
+        "session": "mama_s1",
         "conversation": history,
         "state_history": state_history,
         "final_state": state_history[-1] if state_history else DEFAULT_STATE,
@@ -335,80 +291,31 @@ def save_log(student_id, history, state_history):
     return filename
 
 # ── Session state init ────────────────────────────────────────────────────────
-if "mode" not in st.session_state:
-    st.session_state.mode = "select"
-
-if "history" not in st.session_state:
-    st.session_state.history = []
-
-if "state" not in st.session_state:
-    st.session_state.state = dict(DEFAULT_STATE)
-
-if "state_history" not in st.session_state:
-    st.session_state.state_history = []
-
-if "student_id" not in st.session_state:
-    st.session_state.student_id = ""
-
-if "initialized" not in st.session_state:
-    st.session_state.initialized = False
+for key, val in [
+    ("mode", "select"), ("history", []), ("state", dict(DEFAULT_STATE)),
+    ("state_history", []), ("student_id", ""), ("initialized", False)
+]:
+    if key not in st.session_state:
+        st.session_state[key] = val
 
 # ── CSS ───────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap');
-
-html, body, [class*="css"] {
-    font-family: 'DM Sans', sans-serif;
-}
-
-h1, h2, h3 {
-    font-family: 'DM Serif Display', serif;
-}
-
-.stChatMessage {
-    border-radius: 12px;
-    margin-bottom: 8px;
-}
-
-.progress-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 4px 0;
-    font-size: 0.85rem;
-}
-
-.dot-true {
-    width: 10px; height: 10px;
-    border-radius: 50%;
-    background: #2ecc71;
-    flex-shrink: 0;
-}
-
-.dot-false {
-    width: 10px; height: 10px;
-    border-radius: 50%;
-    background: #e0e0e0;
-    flex-shrink: 0;
-}
-
-.layer-title {
-    font-weight: 500;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: #888;
-    margin-top: 12px;
-    margin-bottom: 4px;
-}
+html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
+h1, h2, h3 { font-family: 'DM Serif Display', serif; }
+.stChatMessage { border-radius: 12px; margin-bottom: 8px; }
+.progress-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 0.85rem; }
+.dot-true { width: 10px; height: 10px; border-radius: 50%; background: #2ecc71; flex-shrink: 0; }
+.dot-false { width: 10px; height: 10px; border-radius: 50%; background: #e0e0e0; flex-shrink: 0; }
+.layer-title { font-weight: 500; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: #888; margin-top: 12px; margin-bottom: 4px; }
 </style>
 """, unsafe_allow_html=True)
 
 # ── Mode selector ─────────────────────────────────────────────────────────────
 if st.session_state.mode == "select":
-    st.markdown("# 🔬 Citología Ginecológica")
-    st.markdown("### UT5 · Caso clínico complejo · Tutor Socrático")
+    st.markdown("# 🔬 Citología de Mama")
+    st.markdown("### Sesión 1 · Anatomía e histología como herramienta interpretativa")
     st.divider()
     col1, col2 = st.columns(2)
     with col1:
@@ -422,8 +329,7 @@ if st.session_state.mode == "select":
 
 # ── Student view ──────────────────────────────────────────────────────────────
 elif st.session_state.mode == "student":
-    st.markdown("## 🔬 Tutor · Citología Ginecológica")
-
+    st.markdown("## 🔬 Tutor · Sesión 1 — Citología de Mama")
     client = get_client()
 
     if not st.session_state.initialized:
@@ -433,40 +339,32 @@ elif st.session_state.mode == "student":
         st.session_state.initialized = True
 
     for msg in st.session_state.history:
-        role = "assistant" if msg["role"] == "assistant" else "user"
-        with st.chat_message(role):
+        with st.chat_message("assistant" if msg["role"] == "assistant" else "user"):
             st.write(msg["content"])
 
     if prompt := st.chat_input("Escribe tu respuesta..."):
         st.session_state.history.append({"role": "user", "content": prompt})
-
         with st.spinner(""):
-            prev_state = st.session_state.state
+            prev_state = dict(st.session_state.state)
             new_state = call_judge(client, st.session_state.history, prev_state)
             st.session_state.state = new_state
             st.session_state.state_history.append(dict(new_state))
-
             tutor_reply = call_tutor(client, st.session_state.history, new_state, prev_state=prev_state)
             st.session_state.history.append({"role": "assistant", "content": tutor_reply})
-
             sid = st.session_state.student_id or "sin_id"
             save_log(sid, st.session_state.history, st.session_state.state_history)
-
         st.rerun()
 
     st.divider()
     if st.button("← Volver"):
-        st.session_state.mode = "select"
-        st.session_state.history = []
-        st.session_state.state = dict(DEFAULT_STATE)
-        st.session_state.state_history = []
-        st.session_state.initialized = False
+        for k, v in [("mode","select"),("history",[]),("state",dict(DEFAULT_STATE)),
+                     ("state_history",[]),("initialized",False)]:
+            st.session_state[k] = v
         st.rerun()
 
 # ── Teacher view ──────────────────────────────────────────────────────────────
 elif st.session_state.mode == "teacher":
-    st.markdown("## 👩‍🏫 Panel de Profesora")
-
+    st.markdown("## 👩‍🏫 Panel de Profesora · Sesión 1")
     teacher_pass = st.secrets.get("TEACHER_PASSWORD", "citologia2024")
     if "teacher_auth" not in st.session_state:
         st.session_state.teacher_auth = False
@@ -485,64 +383,46 @@ elif st.session_state.mode == "teacher":
         st.stop()
 
     st.divider()
-
     log_dir = "logs"
     if not os.path.exists(log_dir) or not os.listdir(log_dir):
         st.info("Todavía no hay sesiones registradas.")
     else:
         files = sorted(os.listdir(log_dir), reverse=True)
         selected = st.selectbox("Selecciona una sesión", files)
-
         if selected:
             with open(os.path.join(log_dir, selected), "r", encoding="utf-8") as f:
                 data = json.load(f)
-
             col1, col2 = st.columns([2, 1])
-
             with col1:
                 st.markdown(f"### 💬 Chat — {data.get('student_id', '?')} · {data.get('timestamp', '')}")
                 for i, msg in enumerate(data["conversation"]):
                     role = "🤖 Tutor" if msg["role"] == "assistant" else "👩‍🎓 Alumna"
                     state_at_turn = data["state_history"][i] if i < len(data["state_history"]) else None
-
                     with st.expander(f"**{role}** — turno {i+1}", expanded=True):
                         st.write(msg["content"])
                         if state_at_turn and msg["role"] == "user":
                             prev = data["state_history"][i-1] if i > 0 else DEFAULT_STATE
                             new_items = [k for k in state_at_turn if state_at_turn[k] and not prev.get(k)]
                             if new_items:
-                                st.success("✅ Nuevo en este turno: " + ", ".join(ITEM_LABELS[k] for k in new_items))
-
+                                st.success("✅ Nuevo: " + ", ".join(ITEM_LABELS[k] for k in new_items))
             with col2:
                 st.markdown("### 📊 Progreso final")
                 final = data.get("final_state", DEFAULT_STATE)
-                total = len(final)
                 done = sum(1 for v in final.values() if v)
-                st.progress(done / total)
-                st.markdown(f"**{done}/{total} ítems completados**")
+                st.progress(done / len(final))
+                st.markdown(f"**{done}/{len(final)} ítems completados**")
                 st.divider()
-
                 for layer, items in LAYERS.items():
                     st.markdown(f'<div class="layer-title">{layer}</div>', unsafe_allow_html=True)
                     for item in items:
-                        val = final.get(item, False)
-                        dot = "dot-true" if val else "dot-false"
-                        label = ITEM_LABELS[item]
-                        st.markdown(
-                            f'<div class="progress-item"><div class="{dot}"></div>{label}</div>',
-                            unsafe_allow_html=True
-                        )
-
+                        dot = "dot-true" if final.get(item) else "dot-false"
+                        st.markdown(f'<div class="progress-item"><div class="{dot}"></div>{ITEM_LABELS[item]}</div>', unsafe_allow_html=True)
                 st.divider()
-                st.markdown("### 📈 Evolución turno a turno")
+                st.markdown("### 📈 Evolución")
                 if data["state_history"]:
                     import pandas as pd
-                    rows = []
-                    for i, s in enumerate(data["state_history"]):
-                        rows.append({"Turno": i+1, "Ítems completados": sum(1 for v in s.values() if v)})
-                    df = pd.DataFrame(rows)
+                    df = pd.DataFrame([{"Turno": i+1, "Ítems": sum(1 for v in s.values() if v)} for i, s in enumerate(data["state_history"])])
                     st.line_chart(df.set_index("Turno"))
-
     st.divider()
     if st.button("← Volver"):
         st.session_state.mode = "select"
