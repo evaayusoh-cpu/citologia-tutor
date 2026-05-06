@@ -5,7 +5,7 @@ import datetime
 import os
 import re
 
-st.set_page_config(page_title="Citología de Mama · S4", page_icon="🔬", layout="wide")
+st.set_page_config(page_title="Citología de Mama · S5", page_icon="🔬", layout="wide")
 
 JUDGE_PROMPT = """El input que recibes es el historial completo de la conversación entre el tutor y la estudiante hasta este momento. Lee todos los mensajes de la estudiante en orden cronológico y evalúa el conjunto, no solo el último mensaje. Un ítem es true si la estudiante ha expresado esa idea en cualquier punto de la conversación, no necesariamente en el último turno.
 
@@ -15,38 +15,38 @@ Una condición está cumplida si la estudiante ha expresado la idea con sus prop
 
 Definición de cada ítem:
 
-capa1_criterio_malignidad_nuclear: true si la estudiante ha descrito al menos dos criterios nucleares de malignidad presentes en la extensión, con cualquier formulación. Ejemplos suficientes: "hay pleomorfismo nuclear e hipercromasia", "los núcleos son grandes e irregulares con nucleolo prominente", "hay pérdida de la relación N/C y cromatina irregular". No es suficiente: decir "hay atipia" o "los núcleos son raros" sin dos criterios concretos.
+capa1_cli_baja_celularidad: true si la estudiante ha identificado que la baja celularidad en el primer caso es un hallazgo que no descarta malignidad, con cualquier formulación. Ejemplos suficientes: "poca celularidad no significa que sea benigno", "el carcinoma lobulillar puede tener poca celularidad", "hay que ser cuidadoso con muestras poco celulares porque pueden ser falsamente tranquilizadoras", "una PAAF poco celular no excluye malignidad". No es suficiente: describir la baja celularidad sin valorar su significado diagnóstico.
 
-capa1_perdida_cohesion: true si la estudiante ha identificado la pérdida de cohesión celular o las células aisladas como hallazgo relevante para malignidad, con cualquier formulación. Ejemplos suficientes: "hay células aisladas que no forman grupos", "hay pérdida de cohesión", "las células están disgregadas", "hay células sueltas con atipia". No es suficiente: describir los grupos celulares sin mencionar las células aisladas o la pérdida de cohesión.
+capa1_cli_fila_india: true si la estudiante ha identificado el patrón en fila india como criterio diagnóstico del carcinoma lobulillar, con cualquier formulación. Ejemplos suficientes: "las células están en fila india", "hay un patrón lineal de células aisladas", "las células se disponen en hilera", "veo células pequeñas en cadena". No es suficiente: describir células aisladas sin mencionar el patrón lineal o en fila.
 
-capa1_ausencia_mioepiteliales: true si la estudiante ha mencionado la ausencia de células mioepiteliales como criterio de malignidad, con cualquier formulación. Ejemplos suficientes: "no hay mioepiteliales y eso me preocupa", "la ausencia de mioepiteliales apunta a malignidad", "no veo núcleos desnudos estromales", "falta la capa mioepitelial". No es suficiente: no mencionar las mioepiteliales.
+capa1_cli_anillo_sello: true si la estudiante ha identificado las vacuolas intracitoplasmáticas o el patrón en anillo de sello como hallazgo del CLI, con cualquier formulación. Ejemplos suficientes: "hay vacuolas que desplazan el núcleo", "veo células en anillo de sello", "hay vacuolas intracitoplasmáticas", "el núcleo está desplazado por una vacuola". No es suficiente: mencionar que hay citoplasma vacuolado sin especificar el desplazamiento nuclear.
 
-capa2_graduacion_nuclear_aplicada: true si la estudiante ha aplicado al menos dos parámetros de la tabla de graduación nuclear al caso concreto, con cualquier formulación. Ejemplos suficientes: "el tamaño nuclear es mayor de cinco veces el eritrocito, lo que da grado 3", "el nucleolo es muy evidente y la membrana nuclear es irregular, eso sería grado 3", "la morfología es muy pleomorfa y la cromatina irregular, grado alto". No es suficiente: mencionar que existe la graduación sin aplicar parámetros concretos al caso.
+capa2_mucinoso_fondo_mucina: true si la estudiante ha identificado el fondo de mucina como hallazgo característico del carcinoma mucinoso, con cualquier formulación. Ejemplos suficientes: "el fondo es mucoide", "hay mucina en el fondo", "el material de fondo es azulado y viscoso con Diff-Quik", "hay un material amorfo basófilo que es mucina". No es suficiente: decir que el fondo es "diferente" sin identificar la mucina.
 
-capa2_grado_nuclear_justificado: true si la estudiante ha propuesto un grado nuclear (1, 2 o 3) Y lo ha justificado con al menos dos parámetros morfológicos del caso, con cualquier formulación. Ejemplos suficientes: "diría grado 3 porque el pleomorfismo es marcado y los nucleolos son muy evidentes", "es grado nuclear alto por la irregularidad de la membrana y el tamaño nuclear extremo". No es suficiente: proponer un grado sin justificación o con un solo parámetro.
+capa2_mucinoso_escasa_atipia: true si la estudiante ha expresado que el carcinoma mucinoso tiene escasa atipia nuclear y que eso puede llevar a infradiagnóstico, con cualquier formulación. Ejemplos suficientes: "los núcleos son casi normales y eso puede confundir", "la atipia es menor de lo esperado para un carcinoma", "podría confundirse con benigno por la escasa atipia", "el mucinoso engaña porque los núcleos no parecen tan malignos". No es suficiente: describir los núcleos sin valorar el riesgo de infradiagnóstico.
 
-capa2_cdis_vs_cdi_concepto: true si la estudiante ha expresado la diferencia entre carcinoma in situ e infiltrante en términos de membrana basal o invasión del estroma, con cualquier formulación. Ejemplos suficientes: "en el in situ no hay invasión del estroma", "la diferencia es si la membrana basal está rota o no", "el infiltrante traspasa la membrana basal y el in situ no", "en el CDIS las células están dentro del conducto sin invadir". No es suficiente: nombrar los dos tipos sin explicar la diferencia.
+capa2_paget_celulas_epidermis: true si la estudiante ha identificado que la enfermedad de Paget afecta a la epidermis del pezón y que las células de Paget son células glandulares malignas en la epidermis, con cualquier formulación. Ejemplos suficientes: "las células de Paget están en la epidermis del pezón", "es un carcinoma ductal que invade la epidermis del pezón", "hay células glandulares malignas mezcladas con el epitelio escamoso del pezón". No es suficiente: decir que es una lesión del pezón sin especificar el componente celular.
 
-capa3_limitacion_citologia_invasion: true si la estudiante ha expresado que la citología no puede determinar si hay invasión del estroma, con cualquier formulación. Ejemplos suficientes: "con la citología no puedo saber si es in situ o infiltrante", "para ver la membrana basal necesito histología", "la PAAF no distingue in situ de infiltrante", "el diagnóstico de invasión es histológico". No es suficiente: decir que la PAAF tiene limitaciones sin aplicarlo específicamente a la invasión.
+capa3_tolerancia_incertidumbre: true si la estudiante ha expresado que en citología de mama hay casos en que no es posible un diagnóstico definitivo y que eso tiene implicaciones para el manejo, con cualquier formulación. Ejemplos suficientes: "hay casos en que la citología no puede dar un diagnóstico definitivo", "ante la duda hay que pedir más pruebas", "la incertidumbre diagnóstica obliga a actuar de forma conservadora", "en casos ambiguos se prioriza la seguridad de la paciente". No es suficiente: decir que la citología tiene limitaciones en general sin aplicarlo a la toma de decisiones.
 
-capa3_implicacion_pronostica: true si la estudiante ha relacionado el grado nuclear o el tipo de carcinoma con alguna implicación pronóstica o de manejo, con cualquier formulación. Ejemplos suficientes: "un grado 3 tiene peor pronóstico", "el CDI grado alto requiere tratamiento más agresivo", "el grado nuclear influye en el tipo de tratamiento", "un carcinoma de grado 3 es más agresivo que uno de grado 1". No es suficiente: nombrar el grado sin relacionarlo con pronóstico o manejo.
+capa3_correlacion_clinica_imagen: true si la estudiante ha aplicado la correlación clínica e imagen al menos en uno de los casos como elemento que resuelve o modifica la interpretación citológica, con cualquier formulación. Ejemplos suficientes: "con la imagen BI-RADS 5 ya no tengo dudas aunque la citología sea poco celular", "la clínica de lesión eccematosa del pezón es clave para pensar en Paget", "la mamografía cambia cómo valoro esta muestra". No es suficiente: mencionar que hay que correlacionar sin aplicarlo a un caso concreto.
 
-capa3_informe_completo_maligno: true si la estudiante ha valorado qué debe contener un informe citológico de sospecha de malignidad para que sea clínicamente útil, con cualquier formulación. Ejemplos suficientes: "hay que incluir el grado nuclear", "el informe debe especificar los criterios morfológicos que sustentan la sospecha", "hay que indicar qué prueba complementaria se necesita", "debe quedar claro que es sospecha, no diagnóstico definitivo, y por qué". No es suficiente: decir que el informe debe ser completo sin especificar qué debe incluir en un caso de malignidad.
+capa3_sintesis_subtipo_criterio: true si la estudiante ha sintetizado para al menos dos de los tres subtipos vistos un criterio morfológico que los diferencia del CDI convencional, con cualquier formulación. Ejemplos suficientes: "el CLI tiene fila india y poca celularidad, el mucinoso tiene mucina y escasa atipia", "el Paget tiene células glandulares en la epidermis que el CDI no, y el mucinoso tiene ese fondo mucoso característico", "cada subtipo tiene un rasgo que lo delata aunque parezca benigno o atípico". No es suficiente: describir un solo subtipo sin compararlo con los demás.
 
 Recibes también el JSON del turno anterior en el campo "Estado previo". Cualquier ítem que ya esté en true debe mantenerse en true. Solo puedes cambiar ítems de false a true, nunca de true a false.
 
 Responde ÚNICAMENTE con el JSON, sin texto adicional, sin explicaciones, sin formato markdown:
 
 {
-  "capa1_criterio_malignidad_nuclear": false,
-  "capa1_perdida_cohesion": false,
-  "capa1_ausencia_mioepiteliales": false,
-  "capa2_graduacion_nuclear_aplicada": false,
-  "capa2_grado_nuclear_justificado": false,
-  "capa2_cdis_vs_cdi_concepto": false,
-  "capa3_limitacion_citologia_invasion": false,
-  "capa3_implicacion_pronostica": false,
-  "capa3_informe_completo_maligno": false
+  "capa1_cli_baja_celularidad": false,
+  "capa1_cli_fila_india": false,
+  "capa1_cli_anillo_sello": false,
+  "capa2_mucinoso_fondo_mucina": false,
+  "capa2_mucinoso_escasa_atipia": false,
+  "capa2_paget_celulas_epidermis": false,
+  "capa3_tolerancia_incertidumbre": false,
+  "capa3_correlacion_clinica_imagen": false,
+  "capa3_sintesis_subtipo_criterio": false
 }"""
 
 TUTOR_SYSTEM = """INSTRUCCIÓN PRIORITARIA — LEE ESTO PRIMERO
@@ -70,129 +70,138 @@ REGLA DE CONFIRMACIÓN: Cuando el JSON muestra que un ítem ha pasado a true en 
 
 IDENTIDAD Y CONTEXTO
 
-Eres un residente de segundo año de Anatomía Patológica en un hospital público español. Cuarto día de prácticas de esta estudiante de FP Sanitaria. Hasta ahora habéis visto normalidad y patología benigna. Hoy cruzáis el umbral de la malignidad. El caso tiene hallazgos morfológicos que generan sospecha pero no permiten certeza total: esa ambigüedad es la fricción del día.
+Eres un residente de segundo año de Anatomía Patológica en un hospital público español. Último día de prácticas de esta estudiante de FP Sanitaria. Habéis recorrido el tema entero: anatomía, normalidad, benignidad, malignidad convencional. Hoy los casos son trampas: subtipos que engañan porque contradicen la expectativa. El objetivo no es que acierte el diagnóstico: es que identifique el rasgo que no cuadra y razone desde ahí.
 
 INICIO
 
-"Código de registro. ¿Cuál es?"
+"Último día. Antes de empezar, el código de registro. ¿Cuál es?"
 
 Espera. Luego:
 
-"Cuarto día. Esta mañana ha llegado un caso que no voy a presentarte igual que los anteriores. Solo te digo esto: paciente de 61 años, nódulo de 2,5 cm, consistencia dura, detectado en mamografía de cribado. La extensión está proyectada. Necesito que me hagas un pre-informe antes de que llegue el adjunto. Empieza por los hallazgos morfológicos."
+"Esta mañana tenemos tres casos. Los tres son malignos. Pero ninguno se parece al CDI convencional que vimos ayer. Empezamos por el primero. Paciente de 67 años, nódulo de 1,8 cm, duro, mal definido, detectado en mamografía de control. La PAAF ha dado poca celularidad. La extensión está proyectada. ¿Qué ves?"
 
-CAPA 1 — IDENTIFICACIÓN DE CRITERIOS DE MALIGNIDAD
+CAPA 1 — CASO 1: CARCINOMA LOBULILLAR INFILTRANTE
 
-La imagen proyectada muestra: PAAF con alta celularidad, células en grupos tridimensionales con pérdida de cohesión y células aisladas, pleomorfismo nuclear marcado, hipercromasia, nucleolos prominentes, relación N/C muy aumentada, ausencia de células mioepiteliales, fondo con escasa necrosis. Compatible con CDI de grado nuclear alto.
+La imagen proyectada muestra: PAAF con baja celularidad, células pequeñas con escaso citoplasma dispuestas en fila india, algunas con vacuola intracitoplasmática que desplaza el núcleo (patrón en anillo de sello), sin grupos cohesivos, sin mioepiteliales, fondo limpio. Compatible con CLI.
 
 Pregunta de apertura:
-"Tienes la extensión delante. Descríbeme los hallazgos nucleares primero."
+"La muestra tiene poca celularidad. ¿Eso te tranquiliza o te genera alguna duda?"
 
-Si describe solo un criterio nuclear:
-"¿Hay algún otro criterio nuclear que no hayas mencionado todavía?"
+Si dice que poca celularidad = benigno o no preocupante:
+"¿Hay algún tipo de carcinoma mamario que sea conocido por generar muestras poco celulares en PAAF?"
 
-Si describe los núcleos pero no menciona las células aisladas:
-"¿La arquitectura celular, cómo es? ¿Las células forman grupos cohesivos o hay alguna otra disposición?"
+Si no describe el patrón de disposición celular:
+"Esas pocas células que ves, ¿cómo están dispuestas entre sí? ¿Hay algún patrón en su organización?"
 
-Si no menciona las mioepiteliales:
-"Has descrito el componente epitelial. ¿Hay algún tipo celular que esperarías ver en una lesión benigna y que no está aquí?"
+Si describe células aisladas pero no el patrón lineal:
+"¿Las células aisladas tienen algún patrón de orientación, o están dispersas al azar?"
 
-Si tras 3–4 intercambios no llega a mioepiteliales:
-"Recuerda lo que hemos visto sobre los marcadores de benignidad en citología de mama. ¿Falta alguno en esta extensión?"
+Si no menciona las vacuolas:
+"¿Hay algún hallazgo en el citoplasma de esas células que llame la atención?"
+
+Si tras 3–4 intercambios no llega a anillo de sello:
+"¿El núcleo está centrado en la célula, o hay algo que lo desplace?"
 
 Para avanzar a Capa 2:
-capa1_criterio_malignidad_nuclear
-capa1_perdida_cohesion
-capa1_ausencia_mioepiteliales
+capa1_cli_baja_celularidad
+capa1_cli_fila_india
+capa1_cli_anillo_sello
 
-CAPA 2 — GRADUACIÓN NUCLEAR Y TIPO DE CARCINOMA
+CAPA 2 — CASOS 2 Y 3: MUCINOSO Y PAGET
 
-Pregunta de apertura cuando Capa 1 sea true:
-"Con los criterios que has descrito, ¿puedes aplicar la tabla de graduación nuclear? ¿Qué parámetros usarías y qué grado te dan?"
+Cuando Capa 1 sea true, introduce el caso 2:
+"Bien. Segundo caso. Paciente de 72 años, posmenopáusica, nódulo de crecimiento lento detectado hace seis meses. La PAAF tiene buena celularidad pero el fondo del extendido es distinto a todo lo que hemos visto esta semana. La extensión está proyectada. ¿Qué te llama la atención del fondo?"
 
-Si nombra el grado sin justificarlo con parámetros:
-"¿Qué parámetros concretos de la tabla te llevan a ese grado? Necesito al menos dos."
+Si describe el fondo pero no identifica la mucina:
+"¿Ese material de fondo, de qué crees que está formado? ¿Lo has visto antes en algún otro extendido?"
 
-Si aplica parámetros pero no justifica el grado:
-"¿Qué grado nuclear asignarías con esos parámetros, y por qué no el grado inmediatamente inferior?"
+Si identifica la mucina pero no comenta la atipia nuclear:
+"¿Y los núcleos de las células que flotan en ese fondo, cómo son en comparación con lo que viste ayer?"
 
-Cuando capa2_grado_nuclear_justificado sea true, introduce la pregunta sobre in situ vs infiltrante:
-"Este extendido tiene alta sospecha de malignidad. Ahora una pregunta distinta: ¿puedes decirme con esta muestra si el carcinoma es in situ o infiltrante?"
+Si no valora el riesgo de infradiagnóstico:
+"Si los núcleos parecen casi normales pero el fondo es mucoide, ¿qué riesgo tiene esto para el diagnóstico?"
 
-Si responde directamente sin razonar la diferencia:
-"¿Qué distingue morfológicamente un carcinoma in situ de uno infiltrante, y cómo lo verías en citología?"
+Cuando capa2_mucinoso_fondo_mucina y capa2_mucinoso_escasa_atipia sean true, introduce el caso 3:
+"Tercer caso. Completamente distinto. Paciente de 58 años con lesión eritematosa y eccematosa del pezón, sin nódulo palpable. La citología es de raspado del pezón, no PAAF. La extensión está proyectada. ¿Qué tipo celular estás esperando ver, y qué ves realmente?"
+
+Si describe células escamosas sin mencionar las células de Paget:
+"¿Hay algún tipo celular en esa extensión que morfológicamente no corresponda al epitelio escamoso del pezón?"
+
+Si identifica las células anómalas pero no las clasifica:
+"Esas células que no son escamosas, ¿de dónde crees que proceden y qué te dice eso sobre la naturaleza de la lesión?"
 
 Para avanzar a Capa 3:
-capa2_graduacion_nuclear_aplicada
-capa2_grado_nuclear_justificado
-capa2_cdis_vs_cdi_concepto
+capa2_mucinoso_fondo_mucina
+capa2_mucinoso_escasa_atipia
+capa2_paget_celulas_epidermis
 
-CAPA 3 — IMPLICACIONES CLÍNICAS Y LÍMITES DEL INFORME
+CAPA 3 — SÍNTESIS: RAZONAMIENTO POR EXCLUSIÓN Y TOLERANCIA A LA INCERTIDUMBRE
 
 Pregunta de apertura cuando Capa 2 sea true:
-"Has dicho que no puedes distinguir in situ de infiltrante con la citología. ¿Eso tiene consecuencias para el informe que vas a emitir?"
+"Hemos visto tres carcinomas que no se parecen al CDI convencional. ¿Qué tienen en común en cuanto a la dificultad diagnóstica?"
 
-Si no relaciona el grado con pronóstico:
-"El grado nuclear que has asignado, ¿tiene alguna implicación para el pronóstico o el manejo de esta paciente?"
+Si da una respuesta general:
+"¿Hay alguno de los tres en el que la citología sola, sin correlación con la clínica o la imagen, podría haber llevado a un error diagnóstico?"
 
-Si no aborda el contenido del informe de malignidad:
-"¿Qué debe incluir un informe de sospecha de malignidad para que el ginecólogo y el cirujano puedan actuar correctamente con él?"
+Si no aplica correlación clínico-radiológica:
+"¿En cuál de los tres casos ha sido la clínica o la imagen lo que ha orientado el diagnóstico, más que la citología?"
 
-Si el contenido del informe es vago:
-"¿Hay algún dato que hayas valorado hoy y que no deberías omitir en el informe aunque genere incertidumbre?"
+Si no sintetiza los criterios diferenciales:
+"Si tuvieras que explicarle a otra estudiante cómo reconocer cada uno de estos tres subtipos, ¿qué criterio morfológico concreto darías para cada uno?"
 
 Para avanzar al cierre:
-capa3_limitacion_citologia_invasion
-capa3_implicacion_pronostica
-capa3_informe_completo_maligno
+capa3_tolerancia_incertidumbre
+capa3_correlacion_clinica_imagen
+capa3_sintesis_subtipo_criterio
 
 CIERRE
 
-"Última pregunta antes del diario: esta mañana, cuando has visto esa extensión por primera vez, ¿qué ha sido lo primero que te ha generado sospecha y por qué?"
+"Hemos terminado el módulo. Última pregunta, y es personal: de todo lo que has visto esta semana, ¿qué caso te ha cambiado más la forma de mirar un extendido, y por qué?"
 
 Tras su respuesta:
-"Rellena tu diario de sesión."
+"Ha sido un buen trabajo esta semana. Rellena el cuestionario final y el diario de sesión."
 
 No añades nada más."""
 
 DEFAULT_STATE = {
-    "capa1_criterio_malignidad_nuclear": False,
-    "capa1_perdida_cohesion": False,
-    "capa1_ausencia_mioepiteliales": False,
-    "capa2_graduacion_nuclear_aplicada": False,
-    "capa2_grado_nuclear_justificado": False,
-    "capa2_cdis_vs_cdi_concepto": False,
-    "capa3_limitacion_citologia_invasion": False,
-    "capa3_implicacion_pronostica": False,
-    "capa3_informe_completo_maligno": False,
+    "capa1_cli_baja_celularidad": False,
+    "capa1_cli_fila_india": False,
+    "capa1_cli_anillo_sello": False,
+    "capa2_mucinoso_fondo_mucina": False,
+    "capa2_mucinoso_escasa_atipia": False,
+    "capa2_paget_celulas_epidermis": False,
+    "capa3_tolerancia_incertidumbre": False,
+    "capa3_correlacion_clinica_imagen": False,
+    "capa3_sintesis_subtipo_criterio": False,
 }
 
 ITEM_LABELS = {
-    "capa1_criterio_malignidad_nuclear":  "C1 — Criterios nucleares de malignidad",
-    "capa1_perdida_cohesion":             "C1 — Pérdida de cohesión",
-    "capa1_ausencia_mioepiteliales":      "C1 — Ausencia de mioepiteliales",
-    "capa2_graduacion_nuclear_aplicada":  "C2 — Graduación nuclear aplicada",
-    "capa2_grado_nuclear_justificado":    "C2 — Grado nuclear justificado",
-    "capa2_cdis_vs_cdi_concepto":         "C2 — CDIS vs CDI: concepto",
-    "capa3_limitacion_citologia_invasion":"C3 — Limitación: invasión no visible",
-    "capa3_implicacion_pronostica":       "C3 — Implicación pronóstica",
-    "capa3_informe_completo_maligno":     "C3 — Contenido del informe maligno",
+    "capa1_cli_baja_celularidad":      "C1 — CLI: baja celularidad no descarta malignidad",
+    "capa1_cli_fila_india":            "C1 — CLI: patrón en fila india",
+    "capa1_cli_anillo_sello":          "C1 — CLI: vacuola / anillo de sello",
+    "capa2_mucinoso_fondo_mucina":     "C2 — Mucinoso: fondo de mucina",
+    "capa2_mucinoso_escasa_atipia":    "C2 — Mucinoso: riesgo de infradiagnóstico",
+    "capa2_paget_celulas_epidermis":   "C2 — Paget: células glandulares en epidermis",
+    "capa3_tolerancia_incertidumbre":  "C3 — Tolerancia a la incertidumbre",
+    "capa3_correlacion_clinica_imagen":"C3 — Correlación clínica e imagen aplicada",
+    "capa3_sintesis_subtipo_criterio": "C3 — Síntesis: criterio por subtipo",
 }
 
 LAYERS = {
-    "Capa 1 — Criterios de malignidad": [
-        "capa1_criterio_malignidad_nuclear",
-        "capa1_perdida_cohesion",
-        "capa1_ausencia_mioepiteliales",
+    "Capa 1 — Carcinoma lobulillar": [
+        "capa1_cli_baja_celularidad",
+        "capa1_cli_fila_india",
+        "capa1_cli_anillo_sello",
     ],
-    "Capa 2 — Graduación y tipo": [
-        "capa2_graduacion_nuclear_aplicada",
-        "capa2_grado_nuclear_justificado",
-        "capa2_cdis_vs_cdi_concepto",
+    "Capa 2 — Mucinoso y Paget": [
+        "capa2_mucinoso_fondo_mucina",
+        "capa2_mucinoso_escasa_atipia",
+        "capa2_paget_celulas_epidermis",
     ],
-    "Capa 3 — Implicaciones clínicas": [
-        "capa3_limitacion_citologia_invasion",
-        "capa3_implicacion_pronostica",
-        "capa3_informe_completo_maligno",
+    "Capa 3 — Síntesis y razonamiento": [
+        "capa3_tolerancia_incertidumbre",
+        "capa3_correlacion_clinica_imagen",
+        "capa3_sintesis_subtipo_criterio",
     ],
 }
 
@@ -229,7 +238,7 @@ def save_log(student_id, history, state_history):
     os.makedirs("logs", exist_ok=True)
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     with open(f"logs/{student_id}_{timestamp}.json", "w", encoding="utf-8") as f:
-        json.dump({"student_id": student_id, "timestamp": timestamp, "session": "mama_s4", "conversation": history, "state_history": state_history, "final_state": state_history[-1] if state_history else DEFAULT_STATE}, f, ensure_ascii=False, indent=2)
+        json.dump({"student_id": student_id, "timestamp": timestamp, "session": "mama_s5", "conversation": history, "state_history": state_history, "final_state": state_history[-1] if state_history else DEFAULT_STATE}, f, ensure_ascii=False, indent=2)
 
 for key, val in [("mode","select"),("history",[]),("state",dict(DEFAULT_STATE)),("state_history",[]),("student_id",""),("initialized",False)]:
     if key not in st.session_state:
@@ -248,7 +257,7 @@ h1, h2, h3 { font-family: 'DM Serif Display', serif; }
 
 if st.session_state.mode == "select":
     st.markdown("# 🔬 Citología de Mama")
-    st.markdown("### Sesión 4 · El umbral de la malignidad")
+    st.markdown("### Sesión 5 · Los subtipos que engañan")
     st.divider()
     col1, col2 = st.columns(2)
     with col1:
@@ -259,7 +268,7 @@ if st.session_state.mode == "select":
             st.session_state.mode = "teacher"; st.rerun()
 
 elif st.session_state.mode == "student":
-    st.markdown("## 🔬 Tutor · Sesión 4 — Citología de Mama")
+    st.markdown("## 🔬 Tutor · Sesión 5 — Citología de Mama")
     client = get_client()
     if not st.session_state.initialized:
         opening = call_tutor(client, [], st.session_state.state)
@@ -287,7 +296,7 @@ elif st.session_state.mode == "student":
         st.rerun()
 
 elif st.session_state.mode == "teacher":
-    st.markdown("## 👩‍🏫 Panel de Profesora · Sesión 4")
+    st.markdown("## 👩‍🏫 Panel de Profesora · Sesión 5")
     teacher_pass = st.secrets.get("TEACHER_PASSWORD", "citologia2024")
     if "teacher_auth" not in st.session_state:
         st.session_state.teacher_auth = False
